@@ -4,7 +4,7 @@ dependencies:
   version: 0.1.10
 - name: appstore
   repository: http://localhost:8080/
-  version: 0.6.1-dev
+  version: 0.6.3
 - name: backup-pvc-cronjob
   repository: ""
   version: 0.1.0
@@ -31,9 +31,9 @@ dependencies:
   version: 0.1.5
 - name: search
   repository: http://localhost:8080/
-  version: 1.6.0-dev
+  version: 1.6.2
 - name: tycho-api
   repository: http://localhost:8080/
   version: 0.2-dev
-digest: sha256:bd6e66750f32ee8cbb53b78ada9eb0204ee40bb64b76246cead9fab3aa76c398
-generated: "2022-02-08T20:17:42.947557-05:00"
+digest: sha256:b6e81b18da884db1ef84b48d6ea94b786337496a2581c4a89aa63cc348460b13
+generated: "2022-02-09T13:49:02.016824-05:00"
