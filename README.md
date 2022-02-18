@@ -82,7 +82,6 @@ You can view the README.md files for each subchart to see the variables that exi
 | global.restartr_api_service_name | string | `"helx-restartr-api-service"` |  |
 | global.stdnfsPvc | string | `"stdnfs"` |  |
 | global.tycho_api_service_name | string | `"helx-tycho-api"` |  |
-| helx-monitoring.enabled | bool | `false` | enable/disable deployment of loki-stack and cost-analyzer |
 | image-utils.enabled | bool | `false` | enable/disable deployment of image-utils (imagepullsecret-patcher and imagepuller) |
 | monitoring.enabled | bool | `false` | enable/disable deployment of monitoring (kube-prometheus-stack, cost-analyzer, etc.) |
 | nfs-server.enabled | bool | `true` | enable/disable deployment of nfs-server |

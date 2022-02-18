@@ -31,9 +31,6 @@ dependencies:
   - name: backup-pvc-cronjob
     condition: backup-pvc-cronjob.enabled
     version: 0.1.0
-  - name: helx-monitoring
-    condition: helx-monitoring.enabled
-    version: 0.1.6
   - name: image-utils
     condition: image-utils.enabled
     version: 0.1.0
