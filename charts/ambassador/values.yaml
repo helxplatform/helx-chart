@@ -30,9 +30,11 @@ resources:
   limits:
     cpu: 250m
     memory: 300Mi
+    ephemeral-storage: 512Mi
   requests:
     cpu: 150m
     memory: 130Mi
+    ephemeral-storage: 128Mi
 
 global:
   ambassador_service_name: ambassador
