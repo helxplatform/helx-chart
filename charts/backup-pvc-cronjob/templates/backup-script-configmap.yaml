@@ -15,17 +15,13 @@ data:
     cd $SRC/
     tar -cvzf $BAK/backup-$TIMESTAMP.tar.gz *
     ls -alh $BAK/
-    FILE_COUNT=`find $BAK -maxdepth 1 -name backup-*.tar.gz -type f | wc -l`
-    if [ $FILE_COUNT -gt $RETENTION_COUNT ]; then
-      CURRENT_BACKUPS=`find $BAK -maxdepth 1 -name backup-*.tar.gz -type f | sort -r`
-      for BACKUP in $CURRENT_BACKUPS; do
-        let "BACKUP_COUNT += 1"
-        if [ "$BACKUP_COUNT" -le "$RETENTION_COUNT" ]; then
-          echo "Keeping backup: $BACKUP"
-        else
-          echo "Removing backup: $BACKUP"
-          rm $BACKUP
-        fi
-      done
-    fi
+    current_backups=(`find $BAK -maxdepth 1 -name 'backup-*.tar.gz' -type f | sort`)
+    file_count=`echo "${#sorted_backups[@]}"`
+    excess_count=$(($file_count-$RETENTION_COUNT))
+    while [ $excess_count -gt 0 ]; do
+      echo "Removing Backup: ${sorted_backups[0]}"
+      rm `echo "${sorted_backups[0]}"`
+      sorted_backups=("${sorted_backups[@]:1}")
+      excess_count=$(($excess_count-1))
+    done
     echo "backup end: `date`"
