@@ -17,13 +17,9 @@ podAnnotations: {}
 podSecurityContext: {}
   # fsGroup: 2000
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext: 
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
 
 resources:
   limits:
@@ -40,6 +36,7 @@ tolerations: []
 affinity: {}
 
 backupSrcPVC: backup-src-pvc
+backupSrcSubdir: '' # replace quotes with path to override
 backupDstPVC: backup-dst-pvc
 schedule: "30 0 * * 2,3,4,5,6"
 retention: 10
