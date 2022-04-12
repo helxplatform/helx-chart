@@ -10,7 +10,6 @@ A Helm chart for Kubernetes
 |-----|------|---------|-------------|
 | affinity | object | `{}` |  |
 | backupDstPVC | string | `"backup-dst-pvc"` |  |
-| backupSrcSubdir | string | `""` |  |
 | backupSrcPVC | string | `"backup-src-pvc"` |  |
 | fullnameOverride | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
