@@ -37,7 +37,7 @@ tolerations: []
 affinity: {}
 
 backupSrcPVC: backup-src-pvc
-backupSrcSubdir: '' # replace quotes with path to override
+backupSrcSubdir: ""
 backupDstPVC: backup-dst-pvc
 schedule: "30 0 * * 2,3,4,5,6"
 retention: 10
