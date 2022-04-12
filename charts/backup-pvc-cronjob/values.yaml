@@ -20,6 +20,7 @@ podSecurityContext: {}
 securityContext: 
   runAsNonRoot: true
   readOnlyRootFilesystem: true
+  # runAsUser: 8888
 
 resources:
   limits:
