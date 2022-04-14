@@ -7,7 +7,7 @@ data:
     #!/bin/bash
     RETENTION_COUNT={{ .Values.retention }}
     TIMESTAMP=`date "+%Y%m%d%H%M"`
-    SRC=/backup-src
+    SRC=/backup-src/{{ .Values.backupSrcSubdir }}
     BAK=/backup-dst
     echo "backup start: `date`"
     ls -alh $SRC/
