@@ -14,13 +14,12 @@ fullnameOverride: ""
 
 podAnnotations: {}
 
-podSecurityContext: {}
+podSecurityContext:
   # fsGroup: 2000
-
-securityContext: 
   runAsNonRoot: true
-  readOnlyRootFilesystem: true
-  # runAsUser: 8888
+  runAsUser: 1000
+
+securityContext: {}
 
 resources:
   limits:
