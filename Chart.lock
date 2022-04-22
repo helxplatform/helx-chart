@@ -1,0 +1,36 @@
+dependencies:
+- name: ambassador
+  repository: ""
+  version: 0.1.11
+- name: appstore
+  repository: https://helxplatform.github.io/helm-charts/
+  version: 0.6.3
+- name: backup-pvc-cronjob
+  repository: ""
+  version: 0.1.0
+- name: image-utils
+  repository: ""
+  version: 1.0.0
+- name: monitoring
+  repository: https://helxplatform.github.io/helm-charts/
+  version: 0.2.2
+- name: nfs-server
+  repository: ""
+  version: 0.2.5
+- name: nfsrods
+  repository: ""
+  version: 2.0.3
+- name: nginx
+  repository: ""
+  version: 0.3.4
+- name: pod-reaper
+  repository: ""
+  version: 0.1.5
+- name: search
+  repository: https://helxplatform.github.io/helm-charts/
+  version: 1.6.4
+- name: tycho-api
+  repository: https://helxplatform.github.io/helm-charts/
+  version: 0.2-dev
+digest: sha256:45e0949b59ee0be81680c26b933c4f1a108b755d732ad25f3f5834da7d143026
+generated: "2022-04-22T13:10:55.6543-04:00"
