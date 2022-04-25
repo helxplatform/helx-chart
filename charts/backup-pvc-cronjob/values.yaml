@@ -14,23 +14,19 @@ fullnameOverride: ""
 
 podAnnotations: {}
 
-podSecurityContext: {}
+podSecurityContext:
   # fsGroup: 2000
+  runAsNonRoot: true
+  runAsUser: 1000
 
 securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
 
 resources:
   limits:
-    cpu: 50m
+    cpu: 1
     memory: 300Mi
   requests:
-    cpu: 30m
+    cpu: 1
     memory: 150Mi
 
 nodeSelector: {}
@@ -40,6 +36,7 @@ tolerations: []
 affinity: {}
 
 backupSrcPVC: backup-src-pvc
+backupSrcSubdir: ""
 backupDstPVC: backup-dst-pvc
 schedule: "30 0 * * 2,3,4,5,6"
 retention: 10
