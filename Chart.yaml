@@ -53,7 +53,7 @@ dependencies:
     version: 0.1.5
   - name: search
     condition: search.enabled
-    version: 1.6.4
+    version: 1.8.0
     repository: "@helx-charts"
   - name: tycho-api
     condition: tycho-api.enabled
