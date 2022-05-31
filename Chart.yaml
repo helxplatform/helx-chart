@@ -14,7 +14,7 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 0.14.2
+version: 0.15.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
@@ -52,7 +52,7 @@ dependencies:
     version: 0.1.5
   - name: search
     condition: search.enabled
-    version: 1.6.4
+    version: 1.8.0
     repository: "@helx-charts"
   - name: tycho-api
     condition: tycho-api.enabled
