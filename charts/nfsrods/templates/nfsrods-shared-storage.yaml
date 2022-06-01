@@ -20,7 +20,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ include "nfsrods.fullname" . }}-pv
+  name: {{ .Release.Namespace }}-{{ include "nfsrods.fullname" . }}-pv
   annotations:
     helm.sh/resource-policy: keep
 spec:

@@ -2,7 +2,7 @@
 
 A Helm chart for deploying HeLx to Kubernetes.
 
-![Version: 0.11.1](https://img.shields.io/badge/Version-0.11.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.7.0](https://img.shields.io/badge/AppVersion-1.7.0-informational?style=flat-square)
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.0](https://img.shields.io/badge/AppVersion-2.0.0-informational?style=flat-square)
 
 HeLx puts the most advanced analytical scientific models at investigator’s finger tips using equally advanced cloud native, container orchestrated, distributed computing systems. HeLx can be applied in many domains. Its ability to empower researchers to leverage advanced analytical tools without installation or other infrastructure concerns has broad reaching benefits.
 
@@ -10,28 +10,22 @@ HeLx puts the most advanced analytical scientific models at investigator’s fin
 # The most basic deployment of HeLx to a Kubernetes cluster on GKE.
 NAMESPACE=helx
 # Add the helxplatform Helm repository.
-helm repo add helxplatform https://helxplatform.github.io/devops/charts
+helm repo add helx-charts https://helxplatform.github.io/helm-charts
 # Pull down latest chart updates.
 helm repo update
-helm -n $NAMESPACE --create-namespace install helx helxplatform/helx
+helm -n $NAMESPACE --create-namespace install helx helx-charts/helx
 
 # Deploy to a non-GKE cluster.
-helm -n $NAMESPACE --create-namespace install helx helxplatform/helx --set appstore.userStorage.createPVC=true,nfs-server.enabled=false
+helm -n $NAMESPACE --create-namespace install helx helx-charts/helx --set appstore.userStorage.createPVC=true,nfs-server.enabled=false
 
-# To get django admin password copy/paste the commands listed after install.
-# You can also use the status option to reprint those commands.
+# Review the output of the Helm install command.  To review the output use the
+# status option.
 helm -n $NAMESPACE status helx
 # Delete the HeLx chart.
 helm -n $NAMESPACE delete helx
 # Get the default values yaml for HeLx and subcharts.
-helm inspect values helxplatform/[helx ambassador appstore etc.]
+helm inspect values helx-charts/[helx ambassador nginx etc.]
 
-# You can also clone the helxplatform/devops git repository and install.
-HELX_PLATFORM=$HOME/src/helxplatform
-mkdir -p $HELX_PLATFORM
-git clone -b develop  https://github.com/helxplatform/devops.git $HELX_PLATFORM
-cd $HELX_PLATFORM/devops
-helm -n $NAMESPACE --create-namespace install helx helx --set appstore.userStorage.createPVC=true,nfs-server.enabled=false
 ```
 
 To do more than the most basic install you should create a values.yaml that contains settings for your local HeLx environment.  A sample is below.
@@ -41,17 +35,17 @@ appstore:
   django:
     APPSTORE_DJANGO_PASSWORD: "< my secret password >"
     AUTHORIZED_USERS: "user1@example.com,user2@example.com,user3@example.com"
-    oauth:
-      OAUTH_PROVIDERS: "google,github"
-      GOOGLE_NAME: "< secret >"
-      GOOGLE_CLIENT_ID: "< secret >"
-      GOOGLE_SECRET: "< secret >"
-      GITHUB_NAME: "< secret >"
-      GITHUB_CLIENT_ID: "< secret >"
-      GITHUB_SECRET: "< secret >"
   ACCOUNT_DEFAULT_HTTP_PROTOCOL: https
   userStorage:
     createPVC: true
+  oauth:
+    OAUTH_PROVIDERS: "google,github"
+    GOOGLE_NAME: "< secret >"
+    GOOGLE_CLIENT_ID: "< secret >"
+    GOOGLE_SECRET: "< secret >"
+    GITHUB_NAME: "< secret >"
+    GITHUB_CLIENT_ID: "< secret >"
+    GITHUB_SECRET: "< secret >"
 
 nfs-server:
   enabled: false
@@ -65,7 +59,7 @@ nginx:
 
 To deploy HeLx using the values.yaml use the following command.
 ```
-helm -n $NAMESPACE --create-namespace install helx helxplatform/helx --values values.yaml
+helm -n $NAMESPACE --create-namespace install helx helx-charts/helx --values values.yaml
 ```
 
 You can view the README.md files for each subchart to see the variables that exist.
@@ -82,7 +76,6 @@ You can view the README.md files for each subchart to see the variables that exi
 | global.restartr_api_service_name | string | `"helx-restartr-api-service"` |  |
 | global.stdnfsPvc | string | `"stdnfs"` |  |
 | global.tycho_api_service_name | string | `"helx-tycho-api"` |  |
-| helx-monitoring.enabled | bool | `false` | enable/disable deployment of loki-stack and cost-analyzer |
 | image-utils.enabled | bool | `false` | enable/disable deployment of image-utils (imagepullsecret-patcher and imagepuller) |
 | monitoring.enabled | bool | `false` | enable/disable deployment of monitoring (kube-prometheus-stack, cost-analyzer, etc.) |
 | nfs-server.enabled | bool | `true` | enable/disable deployment of nfs-server |
@@ -93,4 +86,4 @@ You can view the README.md files for each subchart to see the variables that exi
 | tycho-api.enabled | bool | `false` | enable/disable deployment of tycho-api |
 
 ----------------------------------------------
-Autogenerated from chart metadata using [helm-docs v1.5.0](https://github.com/norwoodj/helm-docs/releases/v1.5.0)
+Autogenerated from chart metadata using [helm-docs v1.8.1](https://github.com/norwoodj/helm-docs/releases/v1.8.1)
