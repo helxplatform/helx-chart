@@ -18,7 +18,7 @@ version: 1.1.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 1.10.0
+appVersion: 2.0.0
 
 dependencies:
   - name: ambassador
@@ -33,7 +33,7 @@ dependencies:
     version: 0.2.0
   - name: image-utils
     condition: image-utils.enabled
-    version: 0.1.0
+    version: 1.0.0
   - name: monitoring
     condition: monitoring.enabled
     version: 0.2.2
@@ -52,7 +52,7 @@ dependencies:
     version: 0.1.5
   - name: search
     condition: search.enabled
-    version: 1.6.4
+    version: 1.8.0
     repository: "@helx-charts"
   - name: tycho-api
     condition: tycho-api.enabled
