@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 image:
   repository: helxplatform/pod-reaper
-  tag: 1.1.1
+  # tag: 1.1.1
 
 # A set of named reapers
 # Example config:
@@ -14,7 +14,7 @@ reapers:
     schedule: "@every 1m"
     run_duration: "0s"
     require_label_key: "reaper-label"
-    require_label_values: "blackbalsam,cloud-top,dicom-cloudtop,dicom-gh,filebrowser,gsforge,imagej,jupyter-ds,napari,octave,jupyter-education"
+    require_label_values: "blackbalsam,cloud-top,dicom-cloudtop,dicom-gh,filebrowser,gsforge,imagej,jupyter-ds,napari,octave,jupyter-education,scout"
     dry_run: "false"
     log_level: "Info"
     log_format: "Logrus"
