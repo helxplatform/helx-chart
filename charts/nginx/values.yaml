@@ -45,15 +45,17 @@ DEV_PHASE:
 #   nginxTLSSecret: nginx-tls-secret
 
 ingress:
-  # -- Whether to create an Ingress resource or not. New installations of helx should set this to true to avoid needing to request a static IP.
+  # -- Create an Ingress resource or not. New installations of helx should set this to true to avoid needing to request a static IP.
   create: false
+  # -- Set to use a specific ingress class other than the default.
+  ingressClassName:
   annotations: {}
     # kubernetes.io/ingress.class: : ""
   tls:
     # -- Values inserted into the TLS block come from SSL.nginxTLSSecret and service.serverName for backward compatibility
     enabled: true
   admin:
-    # Whether to create an additional Ingress to restrict access to /admin routes
+    # -- Create an additional Ingress to restrict access to /admin routes
     enabled: false
     annotations: {}
       # nginx.ingress.kubernetes.io/whitelist-source-range: "172.25.0.0/16,152.54.0.0/22,152.54.8.0/23,152.54.6.0/24,152.54.4.0/23,152.54.15.132/32"
@@ -67,8 +69,8 @@ varStorage:
 
 restartrApi: false
 
-# -- For TACC, set this to true and specify the hostname
-http_host: false
+# -- If using an external http proxy host set this to true and specify serverName.  Used for TACC.
+external_http_host: false
 
 airflow:
   authenticate: true
