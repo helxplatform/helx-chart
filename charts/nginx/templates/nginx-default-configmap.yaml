@@ -58,7 +58,7 @@ data:
 
                 location / {
                          client_max_body_size 2000M;
-                         {{- if .Values.http_host }}
+                         {{- if .Values.external_http_host }}
                          proxy_set_header Host {{ .Values.service.serverName }};
                          {{- else }}
                          proxy_set_header Host $http_host;
