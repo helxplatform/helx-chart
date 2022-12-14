@@ -67,6 +67,15 @@ varStorage:
   storageSize: 2Gi
   storageClass:
 
+# -- Creates a basicAuth scheme preventing un-authenticated access to the whole site.
+basicAuth:
+  enabled: False
+  # -- Username , make sure to override.
+  username: defaultUser
+  # -- Password, make sure to override.
+  password: defaultPassword
+
+
 restartrApi: false
 
 # -- If using an external http proxy host set this to true and specify serverName.  Used for TACC.
