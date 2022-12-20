@@ -33,5 +33,10 @@ spec:
   storageClassName: {{ .Values.sharedStorage.storageClass }}
   nfs:
     path: {{ .Values.sharedStorage.nfs.path }}
+    {{- if .Values.service.ip }}
     server: {{ .Values.service.ip }}
+    {{- else }}
+    server: {{ include "nfsrods.fullname" . }}
+    {{- end }}
+
 {{- end }}
