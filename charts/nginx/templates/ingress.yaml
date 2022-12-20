@@ -1,4 +1,9 @@
 {{- if .Values.ingress.create }}
+{{ if .Values.basicAuth.enabled }}
+   {{ $_ := set .Values.ingress.annotations "nginx.ingress.kubernetes.io/auth-type" "basic" }}
+   {{ $secretName := printf "%s-nginx-htpasswd" .Release.Name}}
+   {{ $_ := set .Values.ingress.annotations "nginx.ingress.kubernetes.io/auth-secret" $secretName}}
+{{ end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
