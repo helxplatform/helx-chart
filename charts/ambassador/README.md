@@ -1,6 +1,6 @@
 # ambassador
 
-![Version: 0.1.11](https://img.shields.io/badge/Version-0.1.11-informational?style=flat-square) ![AppVersion: 1.12.0](https://img.shields.io/badge/AppVersion-1.12.0-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![AppVersion: 1.14.4](https://img.shields.io/badge/AppVersion-1.14.4-informational?style=flat-square)
 
 A Helm chart for Kubernetes
 
@@ -17,12 +17,12 @@ A Helm chart for Kubernetes
 | imagePullSecrets | list | `[]` |  |
 | nameOverride | string | `""` |  |
 | replicaCount | int | `1` |  |
-| resources.limits.cpu | string | `"250m"` |  |
+| resources.limits.cpu | string | `"300m"` |  |
 | resources.limits.ephemeral-storage | string | `"512Mi"` |  |
-| resources.limits.memory | string | `"300Mi"` |  |
-| resources.requests.cpu | string | `"150m"` |  |
+| resources.limits.memory | string | `"512Mi"` |  |
+| resources.requests.cpu | string | `"100m"` |  |
 | resources.requests.ephemeral-storage | string | `"128Mi"` |  |
-| resources.requests.memory | string | `"130Mi"` |  |
+| resources.requests.memory | string | `"200Mi"` |  |
 | securityContext.runAsUser | int | `8888` |  |
 | service.port | int | `80` |  |
 | service.type | string | `"ClusterIP"` |  |

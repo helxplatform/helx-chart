@@ -2,7 +2,7 @@
 
 A Helm chart for pod-reaper
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![AppVersion: 1.1.2](https://img.shields.io/badge/AppVersion-1.1.2-informational?style=flat-square)
+![Version: 0.2.1](https://img.shields.io/badge/Version-0.2.1-informational?style=flat-square) ![AppVersion: 1.1.2](https://img.shields.io/badge/AppVersion-1.1.2-informational?style=flat-square)
 
 ## Configuring Pod Reaper
 
@@ -67,7 +67,7 @@ reapers:
 | reapers.short-running-apps.log_level | string | `"Info"` |  |
 | reapers.short-running-apps.max_duration | string | `"1h"` |  |
 | reapers.short-running-apps.require_label_key | string | `"reaper-label"` |  |
-| reapers.short-running-apps.require_label_values | string | `"blackbalsam,cloud-top,dicom-cloudtop,dicom-gh,filebrowser,gsforge,imagej,jupyter-ds,napari,octave,jupyter-education,scout"` |  |
+| reapers.short-running-apps.require_label_values | string | `"blackbalsam,cloud-top,dicom-cloudtop,dicom-gh,filebrowser,gsforge,imagej,jupyter-datascience-db,jupyter-ds,jupyter-education,napari,octave,pgadmin,rstudio-server,scout,webtop-base,webtop-octave,webtop-pgadmin"` |  |
 | reapers.short-running-apps.run_duration | string | `"0s"` |  |
 | reapers.short-running-apps.schedule | string | `"@every 1m"` |  |
 | resources.limits.cpu | string | `"30m"` |  |
