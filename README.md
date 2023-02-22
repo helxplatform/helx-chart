@@ -78,7 +78,7 @@ You can view the README.md files for each subchart to see the variables that exi
 | global.tycho_api_service_name | string | `"helx-tycho-api"` |  |
 | image-utils.enabled | bool | `false` | enable/disable deployment of image-utils (imagepullsecret-patcher and imagepuller) |
 | monitoring.enabled | bool | `false` | enable/disable deployment of monitoring (kube-prometheus-stack, cost-analyzer, etc.) |
-| nfs-server.enabled | bool | `true` | enable/disable deployment of nfs-server |
+| nfs-server.enabled | bool | `false` | enable/disable deployment of nfs-server |
 | nfsrods.enabled | bool | `false` | enable/disable deployment of nfsrods |
 | nginx.enabled | bool | `true` | enable/disable deployment of nginx |
 | pod-reaper.enabled | bool | `true` | enable/disable deployment of pod-reaper |
