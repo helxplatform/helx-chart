@@ -19,7 +19,7 @@ monitoring:
   enabled: false
 nfs-server:
   # -- enable/disable deployment of nfs-server
-  enabled: true
+  enabled: false
 nfsrods:
   # -- enable/disable deployment of nfsrods
   enabled: false
