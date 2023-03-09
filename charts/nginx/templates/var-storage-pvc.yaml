@@ -4,8 +4,6 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: {{ .Values.varStorage.claimName }}
-  labels:
-    app: {{- include "nginx.selectorLabels" . | nindent 6 }}
 spec:
   accessModes:
     - ReadWriteMany
