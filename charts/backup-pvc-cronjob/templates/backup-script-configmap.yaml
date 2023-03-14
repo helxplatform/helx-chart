@@ -5,19 +5,29 @@ metadata:
 data:
   backup.sh: |
     #!/bin/bash
+
+    # exit on error
+    set -eou pipefail
+
+    # print commands
+    set -x
+
     RETENTION_COUNT={{ .Values.retention }}
     TIMESTAMP=`date "+%Y%m%d%H%M"`
     SRC=/backup-src/{{ .Values.backupSrcSubdir }}
     BAK=/backup-dst
+    declare -i BACKUP_COUNT=0
+
     echo "backup start: `date`"
     ls -alh $SRC/
     ls -alh $BAK/
     cd $SRC/
-    tar -cvzf $BAK/backup-$TIMESTAMP.tar.gz *
+    tar -czf $BAK/backup-$TIMESTAMP.tar.gz *
     ls -alh $BAK/
-    FILE_COUNT=`find $BAK -maxdepth 1 -name backup-*.tar.gz -type f | wc -l`
+    FILE_COUNT=`find $BAK -maxdepth 1 -name "backup-*.tar.gz" -type f | wc -l`
+    echo "found backup file count: $FILE_COUNT"
     if [ $FILE_COUNT -gt $RETENTION_COUNT ]; then
-      CURRENT_BACKUPS=`find $BAK -maxdepth 1 -name backup-*.tar.gz -type f | sort -r`
+      CURRENT_BACKUPS=`find $BAK -maxdepth 1 -name "backup-*.tar.gz" -type f | sort -r`
       for BACKUP in $CURRENT_BACKUPS; do
         let "BACKUP_COUNT += 1"
         if [ "$BACKUP_COUNT" -le "$RETENTION_COUNT" ]; then
@@ -27,5 +37,7 @@ data:
           rm $BACKUP
         fi
       done
+    else
+      echo "count of backup files is less than $RETENTION_COUNT"
     fi
     echo "backup end: `date`"

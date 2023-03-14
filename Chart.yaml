@@ -30,7 +30,7 @@ dependencies:
     repository: "@helx-charts"
   - name: backup-pvc-cronjob
     condition: backup-pvc-cronjob.enabled
-    version: 0.2.0
+    version: 0.2.1
   - name: image-utils
     condition: image-utils.enabled
     version: 1.0.0
