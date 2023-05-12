@@ -35,6 +35,9 @@ search:
 tycho-api:
   # -- enable/disable deployment of tycho-api
   enabled: false
+ui:
+  # -- enable/disable deployment of helx-ui
+  enabled: true
 
 global:
   tycho_api_service_name: helx-tycho-api
