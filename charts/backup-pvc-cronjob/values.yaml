@@ -38,5 +38,7 @@ affinity: {}
 backupSrcPVC: backup-src-pvc
 backupSrcSubdir: ""
 backupDstPVC: backup-dst-pvc
+# -- Cron job schedule, field order ::
+# minute (0 - 59) : hour (0 - 23) : day of the month (1 - 31) : month (1 - 12) : day of the week (0 - 6) (Sunday to Saturday; 7 is also Sunday on some systems) OR sun, mon, tue, wed, thu, fri, sat
 schedule: "30 0 * * 2,3,4,5,6"
 retention: 10

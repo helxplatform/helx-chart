@@ -23,6 +23,12 @@ data:
                 {{- end }}
                 server_name          {{ .Values.service.serverName }};
 
+                location @notfound {
+                        if ($request_uri !~ "/helx") {
+                                rewrite ^/(.*)$ /helx/$1 last;
+                        }
+                }
+
                 location /private/ {
                          client_max_body_size 2000M;
                          proxy_http_version 1.1;
@@ -71,6 +77,8 @@ data:
                          proxy_http_version 1.1;
                          proxy_pass http://{{ .Values.global.ambassador_service_name }}:80;
                          proxy_set_header requestUri $request_uri;
+                         proxy_intercept_errors on;
+                         error_page 404 = @notfound;
                 }
 
                 {{- if .Values.restartrApi }}

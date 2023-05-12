@@ -14,7 +14,7 @@ reapers:
     schedule: "@every 1m"
     run_duration: "0s"
     require_label_key: "reaper-label"
-    require_label_values: "blackbalsam,cloud-top,dicom-cloudtop,dicom-gh,filebrowser,gsforge,imagej,jupyter-datascience-db,jupyter-ds,jupyter-education,napari,octave,pgadmin,rstudio-server,scout,webtop-base,webtop-octave,webtop-pgadmin"
+    require_label_values: "blackbalsam,cloud-top,dicom-cloudtop,dicom-gh,filebrowser,gsforge,imagej,jupyter-datascience-db,jupyter-ds,jupyter-education,jupyter-helx-notebook,jupyter-helx-db-notebook,jupyter-lab,jupyter-minimal-notebook,napari,octave,pgadmin,rstudio-server,scout,webtop-base,webtop-image-apps,webtop-octave,webtop-pgadmin"
     dry_run: "false"
     log_level: "Info"
     log_format: "Logrus"
