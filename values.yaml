@@ -38,6 +38,9 @@ tycho-api:
 ui:
   # -- enable/disable deployment of helx-ui
   enabled: true
+appstore-sockets:
+  # -- enable/disable deployment of appstore websockets service
+  enabled: true
 
 global:
   tycho_api_service_name: helx-tycho-api
