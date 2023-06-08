@@ -68,4 +68,5 @@ jobs:
         gh --repo https://github.com/helxplatform/helm-charts \
         workflow run package-index.yml \
         -f appRepo=${{ github.repository }} \
+        -f actor=${{ github.actor }} \
         --ref develop
