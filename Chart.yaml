@@ -23,36 +23,36 @@ appVersion: 3.0.0
 dependencies:
   - name: ambassador
     condition: ambassador.enabled
-    version: ">= 0.0.0"
+    version: "^0.0.0"
   - name: appstore
     condition: appstore.enabled
-    version: ">= 3.0.0"
+    version: "^3.0.0"
     repository: "@helx-charts"
   - name: backup-pvc-cronjob
     condition: backup-pvc-cronjob.enabled
-    version: ">= 0.0.0"
+    version: "^0.0.0"
   - name: image-utils
     condition: image-utils.enabled
-    version: ">= 1.0.0"
+    version: "^1.0.0"
   - name: monitoring
     condition: monitoring.enabled
-    version: ">= 0.0.0"
+    version: "^0.0.0"
     repository: "@helx-charts"
   - name: nfs-server
     condition: nfs-server.enabled
-    version: ">= 0.0.0"
+    version: "^0.0.0"
   - name: nfsrods
     condition: nfsrods.enabled
-    version: ">= 1.0.0"
+    version: "^1.0.0"
   - name: nginx
     condition: nginx.enabled
-    version: ">= 0.0.0"
+    version: "^0.0.0"
   - name: pod-reaper
     condition: pod-reaper.enabled
-    version: ">= 0.0.0"
+    version: "^0.0.0"
   - name: search
     condition: search.enabled
-    version: ">= 1.0.0"
+    version: "^1.0.0"
     repository: "@helx-charts"
   - name: tycho-api
     condition: tycho-api.enabled
@@ -60,9 +60,9 @@ dependencies:
     repository: "@helx-charts"
   - name: ui
     condition: ui.enabled
-    version: ">= 1.0.0"
+    version: "^1.0.0"
     repository: "@helx-charts"
   - name: appstore-sockets
     condition: appstore-sockets.enabled
-    version: ">= 1.0.0"
+    version: "^1.0.0"
     repository: "@helx-charts"
