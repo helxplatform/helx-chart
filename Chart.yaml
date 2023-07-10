@@ -30,29 +30,29 @@ dependencies:
     repository: "@helx-charts"
   - name: backup-pvc-cronjob
     condition: backup-pvc-cronjob.enabled
-    version: "^0.0.0"
+    version: "^0.2.1"
   - name: image-utils
     condition: image-utils.enabled
     version: "^1.0.0"
   - name: monitoring
     condition: monitoring.enabled
-    version: "^0.0.0"
+    version: "^0.2.0"
     repository: "@helx-charts"
   - name: nfs-server
     condition: nfs-server.enabled
-    version: "^0.0.0"
+    version: "^0.2.0"
   - name: nfsrods
     condition: nfsrods.enabled
-    version: "^1.0.0"
+    version: "^2.0.0"
   - name: nginx
     condition: nginx.enabled
-    version: "^0.0.0"
+    version: "^0.4.0"
   - name: pod-reaper
     condition: pod-reaper.enabled
-    version: "^0.0.0"
+    version: "^0.2.0"
   - name: search
     condition: search.enabled
-    version: "^1.0.0"
+    version: "^2.0.0"
     repository: "@helx-charts"
   - name: tycho-api
     condition: tycho-api.enabled
