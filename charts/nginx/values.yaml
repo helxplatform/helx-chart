@@ -5,9 +5,9 @@
 replicaCount: 1
 
 image:
-  repository: helxplatform/nginx
+  repository: helxplatform/third-party/nginx-unprivileged
   # -- Overrides the image tag whose default is the chart appVersion.
-  tag:
+  tag: latest
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
