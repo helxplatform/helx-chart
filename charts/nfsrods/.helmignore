@@ -20,3 +20,5 @@
 .idea/
 *.tmproj
 .vscode/
+# Exclude helm-docs readmes
+README.md
