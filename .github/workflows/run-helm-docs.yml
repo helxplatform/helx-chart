@@ -27,7 +27,6 @@ jobs:
 
     - name: Check for Helx-Charts Package Updates
       run: |
-        helm dependency update ./charts/*
         helm dependency update
 
     - name: Download Helm-Docs
