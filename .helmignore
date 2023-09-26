@@ -21,3 +21,6 @@
 .idea/
 *.tmproj
 .vscode/
+# Exclude helm-docs readmes
+./charts/*/README.md
+README.md
