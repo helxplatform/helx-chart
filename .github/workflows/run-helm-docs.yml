@@ -1,6 +1,6 @@
 # On pull request, ensure helm-docs is being run
 
-name: Update-Package-Trigger-Helm-Charts
+name: Run-Helm-Docs
 on:
   pull_request:
     types: [ opened, synchronize ]
@@ -27,7 +27,7 @@ jobs:
 
     - name: Check for Helx-Charts Package Updates
       run: |
-        helm dependency update ./charts/
+        helm dependency update ./charts/*
         helm dependency update
 
     - name: Download Helm-Docs
