@@ -25,10 +25,14 @@ jobs:
         mv helm-docs /usr/local/bin/
         chmod +x /usr/local/bin/helm-docs 
 
+
     - name: Create Helm-Docs README.md
       run: | 
         helm-docs
 
+    - name: Cleanup Helm-Docs
+      run: |
+        rm helm-docs_*
     - name: Commit Chart.yaml Changes
       uses: EndBug/add-and-commit@v9
       env:
