@@ -29,6 +29,9 @@ nginx:
 pod-reaper:
   # -- enable/disable deployment of pod-reaper
   enabled: true
+resty:
+  # -- enable/disable deployment of nginx
+  enabled: false
 search:
   # -- enable/disable deployment of search
   enabled: false
