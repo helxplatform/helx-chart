@@ -4,166 +4,183 @@ metadata:
   name: {{ .Release.Name }}-default-nginx-conf
 data:
   default.conf: |
-        {{- if and (.Values.SSL) (not .Values.ingress.create) }}
-        server {
-                listen      {{ .Values.service.httpTargetPort }} default_server;
-                server_name {{ .Values.service.serverName }};
-                return 301 https://$host$request_uri;
+    {{- if and (.Values.SSL) (not .Values.ingress.create) }}
+    server {
+      listen      {{ .Values.service.httpTargetPort }} default_server;
+      server_name {{ .Values.service.serverName }};
+      return 301 https://$host$request_uri;
+    }
+    {{- end }}
+    server {
+      {{- if and (.Values.SSL) (not .Values.ingress.create) }}
+      listen               {{ .Values.service.httpsTargetPort }} ssl;
+      ssl_certificate      /etc/nginx/ssl/tls.crt;
+      ssl_certificate_key  /etc/nginx/ssl/tls.key;
+      {{- else }}
+      # When ingress.create=true, TLS termination happens in ingress-nginx before it reaches this nginx instance
+      listen               {{ .Values.service.httpTargetPort }};
+      listen               [::]:{{ .Values.service.httpTargetPort }};
+      {{- end }}
+      server_name          {{ .Values.service.serverName }};
+
+      location @notfound {
+        if ($request_uri !~ "/helx") {
+          rewrite ^/(.*)$ /helx/$1 last;
         }
+      }
+
+      location /ws {
+        client_max_body_size 2000M;
+        proxy_http_version 1.1;
+        proxy_read_timeout 3600;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+        proxy_pass_request_headers      on;
+      }
+
+      location /private/ {
+        client_max_body_size 2000M;
+        proxy_http_version 1.1;
+        proxy_read_timeout 3600;
+        {{- if .Values.DEV_PHASE.dev }}
+        {{- else }}
+        auth_request /auth;
+        auth_request_set $remoteUser $upstream_http_remote_user;
+        proxy_set_header REMOTE_USER $remoteUser;
+        add_header REMOTE_USER $remoteUser;
+        auth_request_set $access_token $upstream_http_access_token;
+        proxy_set_header Authorization $access_token;
+        add_header Authorization $access_token;
         {{- end }}
-        server {
-                {{- if and (.Values.SSL) (not .Values.ingress.create) }}
-                listen               {{ .Values.service.httpsTargetPort }} ssl;
-                ssl_certificate      /etc/nginx/ssl/tls.crt;
-                ssl_certificate_key  /etc/nginx/ssl/tls.key;
-                {{- else }}
-                # When ingress.create=true, TLS termination happens in ingress-nginx before it reaches this nginx instance
-                listen               {{ .Values.service.httpTargetPort }};
-                listen               [::]:{{ .Values.service.httpTargetPort }};
-                {{- end }}
-                server_name          {{ .Values.service.serverName }};
+        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+        proxy_pass_request_headers      on;
+        # for guacamole
+        proxy_buffering off;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        # end guacamole additons
 
-                location @notfound {
-                        if ($request_uri !~ "/helx") {
-                                rewrite ^/(.*)$ /helx/$1 last;
-                        }
-                }
+        set $transformed_location "";
 
-                location /ws {
-                        client_max_body_size 2000M;
-                        proxy_http_version 1.1;
-                        proxy_read_timeout 3600;
-                        proxy_set_header Upgrade $http_upgrade;
-                        proxy_set_header Connection "upgrade";
-                        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
-                        proxy_pass_request_headers      on;
-                }
+        set_by_lua_block $transformed_location {
+          if not ngx.var.upstream_http_x_original_path then
+            ngx.log(ngx.INFO, "original location not set, returning: ", ngx.var.upstream_http_location)
+            return ngx.var.upstream_http_location;
+          end
 
-                location /private/ {
-                  client_max_body_size 2000M;
-                  proxy_http_version 1.1;
-                  proxy_read_timeout 3600;
-                  {{- if .Values.DEV_PHASE.dev }}
-                  {{- else }}
-                  auth_request /auth;
-                  auth_request_set $remoteUser $upstream_http_remote_user;
-                  proxy_set_header REMOTE_USER $remoteUser;
-                  add_header REMOTE_USER $remoteUser;
-                  auth_request_set $access_token $upstream_http_access_token;
-                  proxy_set_header Authorization $access_token;
-                  add_header Authorization $access_token;
-                  {{- end }}
-                  proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
-                  proxy_pass_request_headers      on;
-                  # for guacamole
-                  proxy_buffering off;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection $http_connection;
-                  # end guacamole additons
+          local new_location = ngx.var.upstream_http_x_original_path .. ngx.var.upstream_http_location
 
-                  set $new_location $upstream_http_x_original_path$upstream_http_location;
-                  if ($new_location ~ ^(.*?)(//http://ambassador/)(.*)$) {
-                    set $transformed_location $1$3;
-                  }
-                  proxy_redirect $upstream_http_location $transformed_location;
-                }
+          ngx.log(ngx.INFO, "performing transform on new_location: ", new_location)
 
-                location = /auth {
-                         client_max_body_size 2000M;
-                         proxy_http_version 1.1;
-                         proxy_pass http://{{ .Values.global.ambassador_service_name }}:80/auth/;
-                         proxy_read_timeout 3600;
-                         proxy_pass_request_body off;
-                         proxy_set_header        Content-Length "";
-                         proxy_set_header        X-Original-URI $request_uri;
-                }
+          local modified_string, count, err =  ngx.re.gsub(new_location,"(.*?)(//http://ambassador/)(.*)$","$1$3")
 
-                location / {
-                         client_max_body_size 2000M;
-                         {{- if .Values.external_http_host }}
-                         proxy_set_header Host {{ .Values.service.serverName }};
-                         {{- else }}
-                         proxy_set_header Host $http_host;
-                         {{- end }}
-                         proxy_set_header X-Real-IP $remote_addr;
-                         proxy_set_header X-Scheme $scheme;
-                         proxy_connect_timeout   60s;
-                         proxy_send_timeout      60s;
-                         proxy_read_timeout 60s;
-                         proxy_http_version 1.1;
-                         proxy_pass http://{{ .Values.global.ambassador_service_name }}:80;
-                         proxy_set_header requestUri $request_uri;
-                         proxy_intercept_errors on;
-                         error_page 404 = @notfound;
-                }
-
-                {{- if .Values.restartrApi }}
-                location ~ .(.*1\.json)$ {
-                        proxy_set_header Host $http_host;
-                        proxy_set_header X-Real-IP $remote_addr;
-                        proxy_set_header X-Scheme $scheme;
-                        proxy_http_version 1.1;
-                        proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552/$1;
-                        proxy_set_header requestUri $request_uri;
-
-                }
-
-                location /api/apidocs/ {
-                         rewrite /api/(.*) /$1 break;
-                         proxy_set_header Host $http_host;
-                         proxy_set_header X-Real-IP $remote_addr;
-                         proxy_set_header X-Scheme $scheme;
-                         proxy_http_version 1.1;
-                         proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552/;
-                         proxy_set_header requestUri $request_uri;
-                         #proxy_intercept_errors on;
-                         #error_page 404 = @fallback;
-                }
-
-                location /api/ {
-                         proxy_set_header Host $http_host;
-                         proxy_set_header X-Real-IP $remote_addr;
-                         proxy_set_header X-Scheme $scheme;
-                         proxy_http_version 1.1;
-                         proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552$request_uri;
-                         proxy_set_header requestUri $request_uri;
-                         #proxy_intercept_errors on;
-                         #error_page 404 = @fallback;
-                }
-
-                #location @fallback {
-                #        try_files /var/www/flasgger/flasgger/ui3/static/ =500;
-                #}
-                {{- end }}
-
-                # Makes /airflow/ accessible if not authenticated
-                location /airflow {
-                         proxy_http_version 1.1;
-                         {{- if .Values.DEV_PHASE.dev }}
-                         {{- else }}
-                         {{- if .Values.airflow.authenticate }}
-                         auth_request /auth;
-                         auth_request_set $remoteUser $upstream_http_remote_user;
-                         proxy_set_header REMOTE_USER $remoteUser;
-                         add_header REMOTE_USER $remoteUser;
-                         auth_request_set $access_token $upstream_http_access_token;
-                         proxy_set_header Authorization $access_token;
-                         add_header Authorization $access_token;
-                         {{- end }}
-                         {{- end }}
-                         proxy_set_header Host $http_host;
-                         proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
-                         proxy_pass_request_headers  on;
-                }
-
-                {{- if .Values.stubStatus.enabled }}
-                location {{ .Values.stubStatus.stubStatusLocation }} {
-                  stub_status;
-                  {{- if .Values.stubStatus.localhostOnly }}
-                  allow 127.0.0.1;	# only allow requests from localhost
-                  deny all;		# deny all other hosts
-                  {{- end }}
-                }
-                {{- end }}
-
+          if err then
+              ngx.log(ngx.ERR, "LUA gsub error modifying ", new_location, ": ", err)
+              return
+          end
+          ngx.log(ngx.INFO, "modified new location to: ", modified_string)
+          return modified_string
         }
+
+        proxy_redirect $upstream_http_location $transformed_location;
+      }
+
+      location = /auth {
+        client_max_body_size 2000M;
+        proxy_http_version 1.1;
+        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80/auth/;
+        proxy_read_timeout 3600;
+        proxy_pass_request_body off;
+        proxy_set_header        Content-Length "";
+        proxy_set_header        X-Original-URI $request_uri;
+      }
+
+      location / {
+        client_max_body_size 2000M;
+        {{- if .Values.external_http_host }}
+        proxy_set_header Host {{ .Values.service.serverName }};
+        {{- else }}
+        proxy_set_header Host $http_host;
+        {{- end }}
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Scheme $scheme;
+        proxy_connect_timeout   60s;
+        proxy_send_timeout      60s;
+        proxy_read_timeout 60s;
+        proxy_http_version 1.1;
+        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80;
+        proxy_set_header requestUri $request_uri;
+        proxy_intercept_errors on;
+        error_page 404 = @notfound;
+      }
+
+      {{- if .Values.restartrApi }}
+      location ~ .(.*1\.json)$ {
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Scheme $scheme;
+        proxy_http_version 1.1;
+        proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552/$1;
+        proxy_set_header requestUri $request_uri;
+      }
+
+      location /api/apidocs/ {
+        rewrite /api/(.*) /$1 break;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Scheme $scheme;
+        proxy_http_version 1.1;
+        proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552/;
+        proxy_set_header requestUri $request_uri;
+        #proxy_intercept_errors on;
+        #error_page 404 = @fallback;
+      }
+
+      location /api/ {
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Scheme $scheme;
+        proxy_http_version 1.1;
+        proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552$request_uri;
+        proxy_set_header requestUri $request_uri;
+        #proxy_intercept_errors on;
+        #error_page 404 = @fallback;
+      }
+
+      #location @fallback {
+      #        try_files /var/www/flasgger/flasgger/ui3/static/ =500;
+      #}
+      {{- end }}
+
+      # Makes /airflow/ accessible if not authenticated
+      location /airflow {
+        proxy_http_version 1.1;
+        {{- if .Values.DEV_PHASE.dev }}
+        {{- else }}
+        {{- if .Values.airflow.authenticate }}
+        auth_request /auth;
+        auth_request_set $remoteUser $upstream_http_remote_user;
+        proxy_set_header REMOTE_USER $remoteUser;
+        add_header REMOTE_USER $remoteUser;
+        auth_request_set $access_token $upstream_http_access_token;
+        proxy_set_header Authorization $access_token;
+        add_header Authorization $access_token;
+        {{- end }}
+        {{- end }}
+        proxy_set_header Host $http_host;
+        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+        proxy_pass_request_headers  on;
+      }
+
+      {{- if .Values.stubStatus.enabled }}
+      location {{ .Values.stubStatus.stubStatusLocation }} {
+        stub_status;
+        {{- if .Values.stubStatus.localhostOnly }}
+        allow 127.0.0.1;	# only allow requests from localhost
+        deny all;		# deny all other hosts
+        {{- end }}
+      }
+      {{- end }}
+
+    }
