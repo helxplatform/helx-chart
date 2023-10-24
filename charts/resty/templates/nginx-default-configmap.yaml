@@ -61,29 +61,23 @@ data:
         proxy_set_header Connection $http_connection;
         # end guacamole additons
 
-        set $transformed_location "";
-
-        set_by_lua_block $transformed_location {
-          if not ngx.var.upstream_http_x_original_path then
-            ngx.log(ngx.INFO, "original location not set, returning: ", ngx.var.upstream_http_location)
-            return ngx.var.upstream_http_location;
+        header_filter_by_lua_block {
+          -- Check if the response is a redirect
+          if ngx.status >= 300 and ngx.status < 400 then
+            local original_path = ngx.var.upstream_http_x_original_path
+            local location = ngx.var.upstream_http_location
+      
+            ngx.log(ngx.INFO, "Status code: ", ngx.status)
+            ngx.log(ngx.INFO, "X-Original-Path header: ", original_path or "not set")
+            ngx.log(ngx.INFO, "Location header: ", location or "not set")
+      
+            if original_path and location then
+              local new_location = original_path .. location:gsub("http://ambassador/", "")
+              ngx.log(ngx.INFO, "New Location after transformation: ", new_location)
+              ngx.header["Location"] = new_location
+            end
           end
-
-          local new_location = ngx.var.upstream_http_x_original_path .. ngx.var.upstream_http_location
-
-          ngx.log(ngx.INFO, "performing transform on new_location: ", new_location)
-
-          local modified_string, count, err =  ngx.re.gsub(new_location,"(.*?)(//http://ambassador/)(.*)$","$1$3")
-
-          if err then
-              ngx.log(ngx.ERR, "LUA gsub error modifying ", new_location, ": ", err)
-              return
-          end
-          ngx.log(ngx.INFO, "modified new location to: ", modified_string)
-          return modified_string
         }
-
-        proxy_redirect $upstream_http_location $transformed_location;
       }
 
       location = /auth {
