@@ -39,6 +39,46 @@ data:
         proxy_pass_request_headers      on;
       }
 
+      #####################################################
+      # Location /private
+      #
+      # Purpose:
+      # This block handles requests to paths starting with "/private/". It contains
+      # configurations for body size, proxy settings, authentication, header 
+      # modifications, and dynamic redirection handling.
+      #
+      # Details:
+      # - Sets the maximum allowed size of the client request body to 2000M.
+      # - Configures proxy settings including timeouts and header modifications.
+      # - Fetches dynamic value for Ambassador service name.
+      # - Contains specific settings for the Guacamole application.
+      # 
+      # REMOTE_USER and Authentication:
+      # - Uses the auth_request directive to perform subrequest authentication. Access
+      #   is allowed if subrequest returns a 2xx response, otherwise denied.
+      # - Captures authenticated user's name from the upstream's `REMOTE_USER` header 
+      #   and sets it to the Nginx variable `$remoteUser`.
+      # - This `$remoteUser` is then set as the `REMOTE_USER` header for the proxied
+      #   request, informing the downstream service of the requesting user.
+      # - Additionally, fetches access token from the upstream's `access_token` header
+      #   for further authorization.
+      #
+      # Lua Script Function:
+      # - The Lua script triggers during the header filtering phase.
+      # - Checks if the response is a redirect (HTTP status in the 3xx range).
+      # - Fetches the `X-Original-Path` and `Location` headers from upstream response.
+      # - Modifies `Location` header by:
+      #   1. Concatenating the `X-Original-Path` value (if present).
+      #   2. Removing the "http://ambassador/" substring from the URL.
+      # - Sets the modified `Location` header for client's response, redirecting 
+      #   client to the correct modified URL.
+      #
+      # Note:
+      # - Configurations conditionally set based on .Values.DEV_PHASE.dev value.
+      # - Guacamole-specific settings disable buffering and set headers for WebSocket.
+      #
+      #####################################################
+
       location /private/ {
         client_max_body_size 2000M;
         proxy_http_version 1.1;
