@@ -112,7 +112,7 @@ data:
             ngx.log(ngx.INFO, "Location header: ", location or "not set")
       
             if original_path and location then
-              local new_location = original_path .. location:gsub("http://ambassador/", "")
+              local new_location = original_path .. location:gsub("https?://ambassador/", "")
               ngx.log(ngx.INFO, "New Location after transformation: ", new_location)
               ngx.header["Location"] = new_location
             end
