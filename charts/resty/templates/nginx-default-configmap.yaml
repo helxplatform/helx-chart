@@ -69,7 +69,7 @@ data:
       # - Fetches the `X-Original-Path` and `Location` headers from upstream response.
       # - Modifies `Location` header by:
       #   1. Concatenating the `X-Original-Path` value (if present).
-      #   2. Removing the "http://ambassador/" substring from the URL.
+      #   2. Removing the "https?://ambassador/" substring from the URL.
       # - Sets the modified `Location` header for client's response, redirecting 
       #   client to the correct modified URL.
       #
