@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "resty.fullname" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "resty.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "resty.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: ambassador-nginx-conf
+        ports:
+        - containerPort: {{ .Values.service.httpTargetPort }}
+        {{- if .Values.SSL }}
+        - containerPort: {{ .Values.service.httpsTargetPort }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+        - name: default-nginx-conf
+          mountPath: /opt/bitnami/openresty/nginx/conf/conf.d
+        - name: nginx-conf
+          mountPath: "/opt/bitnami/openresty/nginx/conf/nginx.conf"
+          subPath: nginx.conf
+        {{- if .Values.SSL }}
+        - name: secret-volume
+          mountPath: /opt/bitnami/openresty/nginx/conf/certs
+        {{- end }}
+#        {{- if .Values.varStorage.claimName }}
+#        - name: var-mounts-claim
+#          mountPath: /var/cache/nginx
+#          subPath: var_cache_nginx
+#        - name: var-mounts-claim
+#          mountPath: /var/run
+#          subPath: var_run
+#        {{- end }}
+        # Uncomment command/args for debugging when things go wrong.
+        # command: ['/bin/bash', '-c']
+        # args: ["while true; do date; sleep 5; done"]
+      # Load the configuration files for nginx
+      volumes:
+        - name: default-nginx-conf
+          configMap:
+            name: {{ .Release.Name }}-default-nginx-conf
+        - name: nginx-conf
+          configMap:
+            name: {{ .Release.Name }}-nginx-conf
+        {{- if .Values.SSL }}
+        - name: secret-volume
+          secret:
+            secretName: {{ .Values.SSL.nginxTLSSecret }}
+        {{- end }}
+        {{- if .Values.varStorage.claimName }}
+        - name: var-mounts-claim
+          persistentVolumeClaim:
+            claimName: {{ .Values.varStorage.claimName }}
+        {{- end }}

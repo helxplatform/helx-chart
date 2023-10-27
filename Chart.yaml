@@ -14,11 +14,11 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 3.2.0
+version: 3.5.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 3.2.0
+appVersion: 3.3.0
 
 dependencies:
   - name: ambassador
@@ -26,7 +26,7 @@ dependencies:
     version: "^0.2.0"
   - name: appstore
     condition: appstore.enabled
-    version: "^3.1.0"
+    version: "^3.3.0"
     repository: "@helx-charts"
   - name: backup-pvc-cronjob
     condition: backup-pvc-cronjob.enabled
@@ -50,6 +50,9 @@ dependencies:
   - name: pod-reaper
     condition: pod-reaper.enabled
     version: "^0.2.0"
+  - name: resty
+    condition: resty.enabled
+    version: "^1.0.0"
   - name: search
     condition: search.enabled
     version: "^2.0.0"
@@ -60,7 +63,7 @@ dependencies:
     repository: "@helx-charts"
   - name: ui
     condition: ui.enabled
-    version: "^1.0.0"
+    version: "^1.2.0"
     repository: "@helx-charts"
   - name: appstore-sockets
     condition: appstore-sockets.enabled

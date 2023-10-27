@@ -1,16 +1,8 @@
-# nginx
+# resty
+
+![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square) ![AppVersion: 2.0.0](https://img.shields.io/badge/AppVersion-2.0.0-informational?style=flat-square)
 
 A Helm chart for Kubernetes
-
-![Version: 1.1.4](https://img.shields.io/badge/Version-1.1.4-informational?style=flat-square) ![AppVersion: 2.0.0](https://img.shields.io/badge/AppVersion-2.0.0-informational?style=flat-square)
-
-### TLS/SSL
-
-The helm charts will not create the TLS secrets for nginx (`nginxTLSSecret`), by default. If you want to enable TLS, you will either need to create a self-signed certificate, or have an administrator create one for you. To create the secret from an existing certificate:
-
-```
-kubectl create secret tls my.domain.org-tls-secret --cert=tls.crt --key=tls.key
-```
 
 ## Values
 
@@ -28,8 +20,8 @@ kubectl create secret tls my.domain.org-tls-secret --cert=tls.crt --key=tls.key
 | global.dug_web_service_name | string | `"dug-web"` |  |
 | global.restartr_api_service_name | string | `"restartr-api-service"` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
-| image.repository | string | `"helxplatform/third-party/nginx-unprivileged"` |  |
-| image.tag | string | `"latest"` | Overrides the image tag whose default is the chart appVersion. |
+| image.repository | string | `"bitnami/openresty"` |  |
+| image.tag | float | `1.21` | Overrides the image tag whose default is the chart appVersion. |
 | imagePullSecrets | list | `[]` |  |
 | ingress.admin.annotations | object | `{}` |  |
 | ingress.admin.enabled | bool | `false` | Create an additional Ingress to restrict access to /admin routes |
