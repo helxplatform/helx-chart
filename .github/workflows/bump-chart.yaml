@@ -67,21 +67,21 @@ jobs:
       env:
         CHARTVERSION: ${{ inputs.chartVersion }} 
       run: |
-        CHART=$(echo $CHARTVERSION) yq --inplace '.version = env(CHART)' Chart.yaml
+        yq --inplace '.version = env(CHARTVERSION)' Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'YES')
 
-    - name: Set User Specified AppVersion Tag
+    - name: Set User Specified Tag
       env:
         APPVERSION: ${{ inputs.chartVersion }}
       run: |
-        APP=$(echo $APPVERSION) yq --inplace '.appVersion = env(APP)' Chart.yaml
+        yq --inplace '.appVersion = env(APPVERSION)' Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'YES')
 
-    - name: Set User Specified AppVersion Tag
+    - name: Set Auto Genrated Tag
       env:
         APPVERSION: ${{ steps.autoChartVersion.outputs.autoChartVersion }}
       run: |
-        APP=$(echo $APPVERSION) yq --inplace '.appVersion = env(APP)' Chart.yaml
+        yq --inplace '.appVersion = env(APPVERSION)' Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
 
 
