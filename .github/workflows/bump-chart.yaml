@@ -55,12 +55,21 @@ jobs:
     # We obtain version major.minor.patch, and always increment patch by 1.
     - name: AutoIncrement Chart Version
       run: |
-        MAJOR=$(yq '.version' Chart.yaml | awk -F. '{ print $1 }')
-        MINOR=$(yq '.version' Chart.yaml | awk -F. '{ print $2 }')
-        BUMP_PATCH=$(yq '.version' Chart.yaml | awk -F. '{print int($3) + 1}')
-        CHARTVERSION="${MAJOR}.${MINOR}.${BUMP_PATCH}"
-        yq --inplace '.version = env(CHARTVERSION)' Chart.yaml
-        yq --inplace '.appVersion = env(CHARTVERSION)' Chart.yaml
+        # Extract the current version from Chart.yaml
+        CURRENT_VERSION=$(yq r Chart.yaml 'version')
+
+        # Split the version into major, minor, and patch
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+        # Increment the patch version
+        BUMP_PATCH=$((PATCH + 1))
+
+        # Create the new version string
+        NEW_VERSION="${MAJOR}.${MINOR}.${BUMP_PATCH}"
+
+        # Update the Chart.yaml file with the new version
+        yq eval -i ".version = \"$NEW_VERSION\"" Chart.yaml
+        yq eval -i ".appVersion = \"$NEW_VERSION\"" Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
 
     - name: Set User Specified chart version
