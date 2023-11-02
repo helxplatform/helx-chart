@@ -62,17 +62,17 @@ jobs:
         IFS='.' read -a version_parts <<< "$CURRENT_VERSION"
         MAJOR="${version_parts[0]}"
         MINOR="${version_parts[1]}"
-        PATCH="${version_parts[2]}"
+        PATCH="${version_parts[2]//[^0-9]/}" 
 
         # Increment the patch version
         BUMP_PATCH=$((PATCH + 1))
 
-        # Create the new version string
-        NEW_VERSION="${MAJOR}.${MINOR}.${BUMP_PATCH}"
+        # Export the NEW_VERSION variable for use in the yq command
+        export NEW_VERSION
 
         # Update the Chart.yaml file with the new version
-        yq e -i '.version = env(NEW_VERSION)' Chart.yaml
-        yq e -i '.appVersion = env(NEW_VERSION)' Chart.yaml
+        yq e -i '.version = strenv(NEW_VERSION)' Chart.yaml
+        yq e -i '.appVersion = strenv(NEW_VERSION)' Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
 
     - name: Set User Specified chart version
