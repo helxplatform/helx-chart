@@ -54,12 +54,13 @@ jobs:
     # Ref: https://www.reddit.com/r/bash/comments/78rxyv/how_to_make_awk_return_an_integer/
     # We obtain version major.minor.patch, and always increment patch by 1.
     - name: AutoIncrement Chart Version
-      id: chart-version
+      id: autoChartVersion
       run: |
         MAJOR=$(yq '.version' Chart.yaml | awk -F. '{ print $1 }')
         MINOR=$(yq '.version' Chart.yaml | awk -F. '{ print $2 }')
         BUMP_PATCH=$(yq '.version' Chart.yaml | awk -F. '{print int($3) + 1}')
         CHARTVERSION=$(echo $MAJOR.$MINOR.$BUMP_PATCH) yq --inplace '.version = env(CHARTVERSION)' Chart.yaml
+        echo "$CHARTVERSION" >> $GITHUB_OUTPUT
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
 
     - name: Set User Specified chart version
@@ -78,7 +79,7 @@ jobs:
 
     - name: Set User Specified AppVersion Tag
       env:
-        APPVERSION: ${{ inputs.chartVersion }}
+        APPVERSION: ${{ steps.autoChartVersion.outputs.CHARTVERSION }}
       run: |
         APP=$(echo $APPVERSION) yq --inplace '.appVersion = env(APP)' Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
