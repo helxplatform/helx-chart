@@ -60,7 +60,7 @@ jobs:
         MINOR=$(yq '.version' Chart.yaml | awk -F. '{ print $2 }')
         BUMP_PATCH=$(yq '.version' Chart.yaml | awk -F. '{print int($3) + 1}')
         CHARTVERSION=$(echo $MAJOR.$MINOR.$BUMP_PATCH) yq --inplace '.version = env(CHARTVERSION)' Chart.yaml
-        echo "$CHARTVERSION" >> $GITHUB_OUTPUT
+        echo "autoChartVersion=$CHARTVERSION" >> $GITHUB_OUTPUT
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
 
     - name: Set User Specified chart version
@@ -79,7 +79,7 @@ jobs:
 
     - name: Set User Specified AppVersion Tag
       env:
-        APPVERSION: ${{ steps.autoChartVersion.outputs.CHARTVERSION }}
+        APPVERSION: ${{ steps.autoChartVersion.outputs.autoChartVersion }}
       run: |
         APP=$(echo $APPVERSION) yq --inplace '.appVersion = env(APP)' Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
