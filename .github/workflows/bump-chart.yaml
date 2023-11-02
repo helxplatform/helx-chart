@@ -58,7 +58,7 @@ jobs:
         MAJOR=$(yq '.version' Chart.yaml | awk -F. '{ print $1 }')
         MINOR=$(yq '.version' Chart.yaml | awk -F. '{ print $2 }')
         BUMP_PATCH=$(yq '.version' Chart.yaml | awk -F. '{print int($3) + 1}')
-        CHARTVERSION=$(echo $MAJOR.$MINOR.$BUMP_PATCH) 
+        CHARTVERSION="${MAJOR}.${MINOR}.${BUMP_PATCH}"
         yq --inplace '.version = env(CHARTVERSION)' Chart.yaml
         yq --inplace '.appVersion = env(CHARTVERSION)' Chart.yaml
       if: ( steps.checkChartVersion.outputs.chartVersionPresent == 'NO')
