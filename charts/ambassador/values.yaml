@@ -36,8 +36,7 @@ resources:
     memory: 200Mi
     ephemeral-storage: 128Mi
 
-global:
-  ambassador_service_name: ambassador
-  # -- Specify the Ambassador ID (useful if multiple Ambassadors are deployed to
-  # the same cluster).
-  ambassador_id:
+ambassador_service_name: ambassador
+# -- Specify the Ambassador ID (useful if multiple Ambassadors are deployed to
+# the same cluster).
+ambassador_id:
