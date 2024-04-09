@@ -31,9 +31,9 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        {{ if .Values.ambassador_id }}
+        {{ if .Values.global.ambassador_id }}
         - name: AMBASSADOR_ID
-          value: {{ .Values.ambassador_id }}
+          value: {{ .Values.global.ambassador_id }}
         {{- end }}
         - name: AMBASSADOR_SINGLE_NAMESPACE
           value: "true"
