@@ -13,15 +13,8 @@ on:
       - .github/*
 jobs:
   trigger-helm-charts:
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Trigger Helm-Charts Workflow
-      env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      run: | 
-        gh --repo https://github.com/helxplatform/helm-charts \
-        workflow run package-index.yml \
-        -f appRepo=${{ github.repository }} \
-        -f actor=${{ github.actor }} \
-        --ref develop
+    uses: helxplatform/helx-github-actions/.github/workflows/trigger-helm-charts.yml@main
+    secrets: inherit
+    with:
+      appRepo: ${{ github.repository }}
+      actor: ${{ github.actor }}
