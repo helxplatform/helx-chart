@@ -3,6 +3,9 @@ kind: Service
 metadata:
   labels:
     service: {{ .Values.global.ambassador_service_name }}-admin
+    # This labels the service as the type 'ambassador' even if the name is something else. It's used
+    # to identify that the service is up by tycho, and is useful when the name isn't 'ambassador'.
+    app: ambassador
   name: {{ .Values.global.ambassador_service_name }}-admin
 spec:
   type: {{ .Values.adminservice.type }}
