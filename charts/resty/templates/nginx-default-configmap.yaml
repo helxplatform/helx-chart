@@ -112,7 +112,7 @@ data:
             ngx.log(ngx.INFO, "Location header: ", location or "not set")
       
             if original_path and location then
-              local new_location = original_path .. location:gsub("http://{{ .Values.global.ambassador_service_name }}/", "")
+              local new_location = original_path .. location:gsub("https?://{{ .Values.global.ambassador_service_name }}/", "")
               ngx.log(ngx.INFO, "New Location after transformation: ", new_location)
               ngx.header["Location"] = new_location
             end
