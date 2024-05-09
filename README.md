@@ -72,6 +72,7 @@ You can view the README.md files for each subchart to see the variables that exi
 | appstore-sockets.enabled | bool | `true` | enable/disable deployment of appstore websockets service |
 | appstore.enabled | bool | `true` | enable/disable deployment of appstore |
 | backup-pvc-cronjob.enabled | bool | `false` | enable/disable deployment of backup-pvc-cronjob |
+| global.ambassador_service_name | string | `"ambassador"` |  |
 | global.redis.existingSecret | string | `"redis-secret"` |  |
 | global.redis.existingSecretPasswordKey | string | `"redis-password"` |  |
 | global.restartr_api_service_name | string | `"helx-restartr-api-service"` |  |
