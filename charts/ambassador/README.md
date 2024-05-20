@@ -11,7 +11,7 @@ A Helm chart for Kubernetes
 | adminservice.type | string | `"ClusterIP"` |  |
 | fullnameOverride | string | `""` |  |
 | global.ambassador_id | string | `nil` | Specify the Ambassador ID (useful if multiple Ambassadors are deployed to the same cluster). |
-| global.ambassador_service_name | string | `"ambassador"` |  |
+| global.ambassador_service_name | string | `"ambassador"` | Specify the service name for the ambassador app |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"docker.io/datawire/ambassador"` |  |
 | imagePullSecrets | list | `[]` |  |
