@@ -3,6 +3,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.global.ambassador_service_name }}
+  annotations:
+    getambassador.io/config: |
+      ---
+      apiVersion: ambassador/v1
+      kind:  Module
+      name:  ambassador
+      ambassador_id: [ "{{ .Values.global.ambassador_id }}" ]
 spec:
   type: {{ .Values.service.type }}
   #externalTrafficPolicy: Local
