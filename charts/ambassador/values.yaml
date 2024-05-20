@@ -37,6 +37,7 @@ resources:
     ephemeral-storage: 128Mi
 
 global:
+  # -- Specify the service name for the ambassador app
   ambassador_service_name: ambassador
   # -- Specify the Ambassador ID (useful if multiple Ambassadors are deployed to
   # the same cluster).

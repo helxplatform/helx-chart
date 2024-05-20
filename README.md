@@ -2,7 +2,7 @@
 
 A Helm chart for deploying HeLx to Kubernetes.
 
-![Version: 4.3.1](https://img.shields.io/badge/Version-4.3.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.6.1](https://img.shields.io/badge/AppVersion-3.6.1-informational?style=flat-square)
+![Version: 4.3.1](https://img.shields.io/badge/Version-4.3.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.5.1](https://img.shields.io/badge/AppVersion-3.5.1-informational?style=flat-square)
 
 HeLx puts the most advanced analytical scientific models at investigator’s finger tips using equally advanced cloud native, container orchestrated, distributed computing systems. HeLx can be applied in many domains. Its ability to empower researchers to leverage advanced analytical tools without installation or other infrastructure concerns has broad reaching benefits.
 
@@ -72,6 +72,7 @@ You can view the README.md files for each subchart to see the variables that exi
 | appstore-sockets.enabled | bool | `true` | enable/disable deployment of appstore websockets service |
 | appstore.enabled | bool | `true` | enable/disable deployment of appstore |
 | backup-pvc-cronjob.enabled | bool | `false` | enable/disable deployment of backup-pvc-cronjob |
+| global.ambassador_service_name | string | `"ambassador"` |  |
 | global.redis.existingSecret | string | `"redis-secret"` |  |
 | global.redis.existingSecretPasswordKey | string | `"redis-password"` |  |
 | global.restartr_api_service_name | string | `"helx-restartr-api-service"` |  |
