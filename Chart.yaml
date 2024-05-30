@@ -12,7 +12,7 @@ description: A Helm chart for deploying HeLx to Kubernetes.
 type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 4.3.2
+version: 4.4.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
@@ -24,7 +24,7 @@ dependencies:
     version: "^0.2.0"
   - name: appstore
     condition: appstore.enabled
-    version: "^4.1.5"
+    version: "^4.1.6"
     repository: "@helx-charts"
   - name: backup-pvc-cronjob
     condition: backup-pvc-cronjob.enabled
@@ -57,7 +57,7 @@ dependencies:
     repository: "@helx-charts"
   - name: ui
     condition: ui.enabled
-    version: "^1.4.0"
+    version: "^1.5.0"
     repository: "@helx-charts"
   - name: appstore-sockets
     condition: appstore-sockets.enabled
