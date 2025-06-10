@@ -15,6 +15,9 @@ A Helm chart for Kubernetes
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"docker.io/datawire/ambassador"` |  |
 | imagePullSecrets | list | `[]` |  |
+| logrotateImage.pullPolicy | string | `"IfNotPresent"` |  |
+| logrotateImage.repository | string | `"containers.renci.org/helxplatform/logrotate"` |  |
+| logrotateImage.tag | string | `"v0.0.1"` |  |
 | nameOverride | string | `""` |  |
 | replicaCount | int | `1` |  |
 | resources.limits.cpu | string | `"300m"` |  |
