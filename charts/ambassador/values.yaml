@@ -10,6 +10,11 @@ image:
   # tag: 1.1.1
   pullPolicy: IfNotPresent
 
+logrotateImage:
+  repository: containers.renci.org/helxplatform/logrotate
+  tag: v0.0.1
+  pullPolicy: IfNotPresent
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
