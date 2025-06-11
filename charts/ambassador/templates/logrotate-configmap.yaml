@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logrotate-config
+data:
+  logrotate.conf: |
+    /tmp/admin_access_log {
+      size 25M
+      copytruncate
+      rotate 5
+      compress
+      delaycompress
+      missingok
+      notifempty
+    }

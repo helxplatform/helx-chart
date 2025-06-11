@@ -64,6 +64,24 @@ spec:
         volumeMounts:
         - mountPath: /tmp/ambassador-pod-info
           name: ambassador-pod-info
+        - name: shared-tmp-volume
+          mountPath: /tmp
+      - name: logrotate
+        image: "{{ .Values.logrotateImage.repository }}:{{ .Values.logrotateImage.tag }}"
+        imagePullPolicy: {{ .Values.logrotateImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          while true; do 
+            /usr/sbin/logrotate -s /tmp/logrotate.status /etc/logrotate.d/logrotate.conf; 
+            sleep 3600;
+          done
+        volumeMounts:
+        - name: logrotate-config-volume
+          mountPath: /etc/logrotate.d
+        - name: shared-tmp-volume
+          mountPath: /tmp
       restartPolicy: Always
       {{- if .Values.securityContext }}
       securityContext:
@@ -85,3 +103,8 @@ spec:
               fieldPath: metadata.labels
             path: labels
         name: ambassador-pod-info
+      - name: logrotate-config-volume
+        configMap:
+          name: logrotate-config
+      - name: shared-tmp-volume
+        emptyDir: {}
