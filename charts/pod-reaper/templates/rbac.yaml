@@ -27,18 +27,6 @@ rules:
     - delete
     - get
     - list
-- apiGroups:
-  - extensions
-  attributeRestrictions: null
-  resources:
-    - deployments
-    - deployments/scale
-    - replicasets
-    - replicasets/scale
-  verbs:
-    - delete
-    - get
-    - list
 
 ---
 # binding the above cluster role (permissions) to the above service account
