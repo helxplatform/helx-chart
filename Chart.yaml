@@ -24,8 +24,7 @@ dependencies:
     version: "^0.2.0"
   - name: appstore
     condition: appstore.enabled
-    version: "^5.0.0"
-    repository: "@helx-charts"
+    version: "^4.1.8"
   - name: backup-pvc-cronjob
     condition: backup-pvc-cronjob.enabled
     version: "^0.2.1"
