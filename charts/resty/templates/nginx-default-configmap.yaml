@@ -80,44 +80,107 @@ data:
       #####################################################
 
       location /private/ {
-        client_max_body_size 2000M;
-        proxy_http_version 1.1;
-        proxy_read_timeout 3600;
-        {{- if .Values.DEV_PHASE.dev }}
-        {{- else }}
-        auth_request /auth;
-        auth_request_set $remoteUser $upstream_http_remote_user;
-        proxy_set_header REMOTE_USER $remoteUser;
-        add_header REMOTE_USER $remoteUser;
-        auth_request_set $access_token $upstream_http_access_token;
-        proxy_set_header Authorization $access_token;
-        add_header Authorization $access_token;
-        {{- end }}
-        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
-        proxy_pass_request_headers      on;
-        # for guacamole
-        proxy_buffering off;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $http_connection;
-        # end guacamole additons
+          client_max_body_size 2000M;
+          proxy_http_version 1.1;
+          proxy_read_timeout 3600;
 
-        header_filter_by_lua_block {
-          -- Check if the response is a redirect
-          if ngx.status >= 300 and ngx.status < 400 then
-            local original_path = ngx.var.upstream_http_x_original_path
-            local location = ngx.var.upstream_http_location
-      
-            ngx.log(ngx.INFO, "Status code: ", ngx.status)
-            ngx.log(ngx.INFO, "X-Original-Path header: ", original_path or "not set")
-            ngx.log(ngx.INFO, "Location header: ", location or "not set")
-      
-            if original_path and location then
-              local new_location = original_path .. location:gsub("https?://{{ .Values.global.ambassador_service_name }}/", "")
-              ngx.log(ngx.INFO, "New Location after transformation: ", new_location)
+          auth_request /auth;
+          auth_request_set $remoteUser $upstream_http_remote_user;
+          proxy_set_header REMOTE_USER $remoteUser;
+          add_header REMOTE_USER $remoteUser;
+
+          auth_request_set $access_token $upstream_http_access_token;
+          proxy_set_header Authorization $access_token;
+          add_header Authorization $access_token;
+
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Forwarded-Host $http_host;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+          proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+          proxy_pass_request_headers on;
+
+          proxy_buffering off;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $http_connection;
+
+          header_filter_by_lua_block {
+            local status = ngx.status
+            local req_id = ngx.var.request_id or "-"
+            local uri = ngx.var.request_uri or "-"
+            local method = ngx.req.get_method() or "-"
+            local host = ngx.var.host or "-"
+            local remote_user = ngx.var.remoteUser or "-"
+            local ambassador = "{{ .Values.global.ambassador_service_name }}"
+
+            if status >= 300 and status < 400 then
+              local original_path = ngx.var.upstream_http_x_original_path
+              local location = ngx.var.upstream_http_location
+
+              ngx.log(
+                ngx.NOTICE,
+                "[private redirect] ",
+                "req_id=", req_id,
+                " method=", method,
+                " host=", host,
+                " uri=", uri,
+                " status=", status,
+                " remote_user=", remote_user,
+                " upstream_location=", tostring(location),
+                " original_path=", tostring(original_path)
+              )
+
+              if not location then
+                ngx.log(
+                  ngx.WARN,
+                  "[private redirect] missing upstream Location header ",
+                  "req_id=", req_id,
+                  " uri=", uri,
+                  " status=", status
+                )
+                return
+              end
+
+              local new_location = location
+
+              new_location = new_location:gsub("^https?://" .. ambassador .. ":%d+", "")
+              new_location = new_location:gsub("^https?://" .. ambassador, "")
+
+              if original_path
+                 and not new_location:match("^https?://")
+                 and not new_location:match("^/") then
+                if not original_path:match("/$") then
+                  original_path = original_path .. "/"
+                end
+                new_location = original_path .. new_location
+              end
+
               ngx.header["Location"] = new_location
+
+              ngx.log(
+                ngx.NOTICE,
+                "[private redirect rewritten] ",
+                "req_id=", req_id,
+                " uri=", uri,
+                " status=", status,
+                " old_location=", tostring(location),
+                " new_location=", tostring(new_location)
+              )
+            else
+              ngx.log(
+                ngx.INFO,
+                "[private response] ",
+                "req_id=", req_id,
+                " method=", method,
+                " host=", host,
+                " uri=", uri,
+                " status=", status,
+                " remote_user=", remote_user
+              )
             end
-          end
-        }
+          }
       }
 
       location = /auth {
