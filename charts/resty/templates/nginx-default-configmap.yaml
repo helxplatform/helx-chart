@@ -39,6 +39,81 @@ data:
         proxy_pass_request_headers      on;
       }
 
+      {{- if .Values.jupyterCollaboration.enabled }}
+      #####################################################
+      # JUPYTER REAL-TIME COLLABORATION (JupyterLab 4 / jupyter-collaboration 4.x)
+      #
+      # All /api/collaboration/* traffic under /private/... (session, room
+      # websockets, fork, timeline, undo_redo, global awareness) is first
+      # offered to the central collab broker, which serves rooms for documents
+      # on shared storage. The broker answers:
+      #   - session PUT: 404 when the path does not exist under its root
+      #     (i.e. the document is in a user's private home)
+      #   - room WS:     HTTP 500 *before* the upgrade for fileIds it did not mint
+      #   - 401/403 on token misconfiguration, 502/503/504 when down
+      # and in all of those cases the request is replayed against the user's
+      # own pod, where per-pod RTC handles the document solo.
+      #
+      # NOTE: post-upgrade websocket closes (1003 session mismatch after a
+      # broker restart, 1004 file deleted) cannot be intercepted here; the
+      # JupyterLab client handles those with a "reload" dialog.
+      #####################################################
+      location ~ ^/private/.+?/api/collaboration/.*$ {
+        client_max_body_size 2000M;
+        proxy_http_version 1.1;
+        proxy_read_timeout 3600;
+        proxy_send_timeout 3600;
+
+        # -- Ensure Auth is enforced --
+        {{- if not .Values.DEV_PHASE.dev }}
+        auth_request /auth;
+        auth_request_set $remoteUser $upstream_http_remote_user;
+        auth_request_set $access_token $upstream_http_access_token;
+        proxy_set_header REMOTE_USER $remoteUser;
+        add_header REMOTE_USER $remoteUser;
+        {{- end }}
+
+        # WebSocket upgrade (no-op for plain HTTP requests)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+
+        # The broker trusts only its own service token, injected here.
+        proxy_set_header Authorization "token {{ .Values.jupyterCollaboration.auth_token }}";
+
+        proxy_intercept_errors on;
+        error_page 401 403 404 500 502 503 504 = @collab_fallback;
+
+        # Strip the /private/<app>/<user>/<guid> prefix so the broker sees just
+        # /api/collaboration/...  A captured backreference preserves the raw
+        # percent-encoding (verified: %20/%2F pass through unchanged) and the
+        # query string (?sessionId=...) is kept. Because proxy_pass targets a
+        # LITERAL host with no variable, nginx resolves the broker hostname at
+        # config-load time via /etc/resolv.conf -- exactly like the ambassador
+        # blocks -- so no `resolver` directive is needed.
+        rewrite ^/private/.+?(/api/collaboration/.*)$ $1 break;
+        proxy_pass {{ .Values.jupyterCollaboration.broker_url }};
+      }
+
+      # Fallback: replay the ORIGINAL request against the user's own pod via
+      # ambassador. auth_request does not run again on the internal redirect,
+      # but the $remoteUser/$access_token variables set above persist.
+      location @collab_fallback {
+        client_max_body_size 2000M;
+        proxy_http_version 1.1;
+        proxy_read_timeout 3600;
+        proxy_send_timeout 3600;
+        {{- if not .Values.DEV_PHASE.dev }}
+        proxy_set_header REMOTE_USER $remoteUser;
+        proxy_set_header Authorization $access_token;
+        {{- else }}
+        proxy_set_header Authorization "";
+        {{- end }}
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+      }
+      {{- end }}
+
       #####################################################
       # Location /private
       #
