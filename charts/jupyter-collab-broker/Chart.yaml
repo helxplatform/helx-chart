@@ -1,0 +1,5 @@
+apiVersion: v2
+description: Central JupyterLab real-time-collaboration (ydoc) server for HeLx shared storage
+name: jupyter-collab-broker
+version: "0.1.0"
+appVersion: "0.1.0"
