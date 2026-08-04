@@ -78,6 +78,7 @@ You can view the README.md files for each subchart to see the variables that exi
 | global.restartr_api_service_name | string | `"helx-restartr-api-service"` |  |
 | global.stdnfsPvc | string | `"stdnfs"` |  |
 | image-utils.enabled | bool | `false` | enable/disable deployment of image-utils (imagepullsecret-patcher and imagepuller) |
+| jupyter-collab-broker.enabled | bool | `false` | enable/disable deployment of the central JupyterLab collaboration broker (requires resty with jupyterCollaboration.enabled) |
 | monitoring.enabled | bool | `false` | enable/disable deployment of monitoring (kube-prometheus-stack, cost-analyzer, etc.) |
 | nfs-server.enabled | bool | `false` | enable/disable deployment of nfs-server |
 | nfsrods.enabled | bool | `false` | enable/disable deployment of nfsrods |

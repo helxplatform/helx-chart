@@ -29,6 +29,9 @@ A Helm chart for Kubernetes
 | ingress.create | bool | `false` | Create an Ingress resource or not. New installations of helx should set this to true to avoid needing to request a static IP. |
 | ingress.ingressClassName | string | `nil` | Set to use a specific ingress class other than the default. |
 | ingress.tls.enabled | bool | `true` | Values inserted into the TLS block come from SSL.nginxTLSSecret and service.serverName for backward compatibility |
+| jupyterCollaboration | object | `{"auth_token":"","broker_url":"http://jupyter-collab-broker:8888","enabled":false}` | Central JupyterLab real-time-collaboration broker (see the jupyter-collab-broker chart). When enabled, /api/collaboration/* requests under /private/ are proxied to the broker with auth_token injected; the broker Service must exist or nginx will fail to start (the proxy_pass hostname resolves at config load). |
+| jupyterCollaboration.auth_token | string | `""` | must match jupyter-collab-broker's auth.token |
+| jupyterCollaboration.broker_url | string | `"http://jupyter-collab-broker:8888"` | Broker base URL. Must be a bare scheme://host:port with NO trailing path or slash: the collaboration location strips its prefix via `rewrite` and relies on proxy_pass having no URI part so the rewritten URI passes through. Using a literal host (no nginx variable) also means the hostname resolves at config-load time via /etc/resolv.conf, like the ambassador upstream. |
 | nameOverride | string | `""` |  |
 | replicaCount | int | `1` |  |
 | resources.limits.cpu | string | `"100m"` |  |
