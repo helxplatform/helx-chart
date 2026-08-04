@@ -43,6 +43,8 @@ spec:
                   key: token
           ports:
             - containerPort: {{ .Values.service.port }}
+          securityContext:
+            allowPrivilegeEscalation: false
           readinessProbe:
             tcpSocket:
               port: {{ .Values.service.port }}
