@@ -109,7 +109,4 @@ global:
   ui_service_name: ""
   appstore_sockets_service_name: appstore-sockets-service
   airflow_service_name: airflow-webserver
-  # -- Namespace where Tycho launches app pods (for /private DNS names).
-  # Defaults to the release namespace when empty.
-  apps_namespace: ""
   cluster_dns_suffix: svc.cluster.local

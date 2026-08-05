@@ -18,7 +18,6 @@ A Helm chart for Kubernetes
 | fullnameOverride | string | `""` |  |
 | global.airflow_service_name | string | `"airflow-webserver"` |  |
 | global.ambassador_service_name | string | `"ambassador"` |  |
-| global.apps_namespace | string | `""` | Namespace where Tycho launches app pods (for /private DNS names). Defaults to the release namespace when empty. |
 | global.appstore_service_name | string | `""` | Optional appstore Service name override. When empty, derives the standard appstore fullname from the Helm release name. |
 | global.appstore_sockets_service_name | string | `"appstore-sockets-service"` |  |
 | global.cluster_dns_suffix | string | `"svc.cluster.local"` |  |

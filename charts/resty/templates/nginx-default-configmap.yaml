@@ -25,22 +25,22 @@ data:
     # Override with resty.dnsResolver if your cluster DNS differs.
     resolver {{ .Values.dnsResolver | default "kube-dns.kube-system.svc.cluster.local" }} valid=10s ipv6=off;
 
-    {{- $appsNamespace := .Values.global.apps_namespace | default .Release.Namespace }}
+    {{- $namespace := .Release.Namespace }}
     {{- $dnsSuffix := .Values.global.cluster_dns_suffix | default "svc.cluster.local" }}
     {{- /* Match the standard fullname helpers in the appstore and UI charts.
-           Explicit values remain available for nameOverride/fullnameOverride. */}}
+           Explicit values remain available for nameOverride/fullnameOverride.
+           Platform Services and launched apps share the release namespace. */}}
     {{- $defaultAppstoreName := ternary .Release.Name (printf "%s-appstore" .Release.Name) (contains "appstore" .Release.Name) }}
     {{- $defaultUiName := ternary .Release.Name (printf "%s-ui" .Release.Name) (contains "ui" .Release.Name) }}
     {{- $appstoreName := .Values.global.appstore_service_name | default $defaultAppstoreName }}
     {{- $uiName := .Values.global.ui_service_name | default $defaultUiName }}
     {{- /* Use FQDNs: any proxy_pass containing a variable (e.g. $request_uri)
            resolves via the `resolver` directive, which does not apply the
-           pod's DNS search domains -- bare service names fail. Platform
-           services are assumed to live in the same namespace as launched apps. */}}
-    {{- $appstore := printf "%s.%s.%s:8000" $appstoreName $appsNamespace $dnsSuffix }}
-    {{- $ui := printf "%s.%s.%s:80" $uiName $appsNamespace $dnsSuffix }}
-    {{- $sockets := printf "%s.%s.%s:5555" (.Values.global.appstore_sockets_service_name | default "appstore-sockets-service") $appsNamespace $dnsSuffix }}
-    {{- $airflow := printf "%s.%s.%s:8080" (.Values.global.airflow_service_name | default "airflow-webserver") $appsNamespace $dnsSuffix }}
+           pod's DNS search domains -- bare service names fail. */}}
+    {{- $appstore := printf "%s.%s.%s:8000" $appstoreName $namespace $dnsSuffix }}
+    {{- $ui := printf "%s.%s.%s:80" $uiName $namespace $dnsSuffix }}
+    {{- $sockets := printf "%s.%s.%s:5555" (.Values.global.appstore_sockets_service_name | default "appstore-sockets-service") $namespace $dnsSuffix }}
+    {{- $airflow := printf "%s.%s.%s:8080" (.Values.global.airflow_service_name | default "airflow-webserver") $namespace $dnsSuffix }}
 
     {{- if and (.Values.SSL) (not .Values.ingress.create) }}
     server {
@@ -159,7 +159,7 @@ data:
           -- Build it from the regex captures rather than trusting a
           -- resolver-returned name, so it can't drift.
           local svc = ngx.var.app .. "-" .. ngx.var.guid
-          ngx.var.upstream = svc .. ".{{ $appsNamespace }}.{{ $dnsSuffix }}:" .. port
+          ngx.var.upstream = svc .. ".{{ $namespace }}.{{ $dnsSuffix }}:" .. port
 
           local uri = ngx.var.request_uri
           if rewrite ~= "" then
@@ -224,10 +224,29 @@ data:
           if lp ~= "" and ngx.status >= 300 and ngx.status < 400 then
             local loc = ngx.header["Location"]
             if loc and loc ~= "" then
-              -- drop scheme://host from same-origin absolute URLs
-              local path = loc:gsub("^https?://[^/]+", "")
-              -- only rewrite root-relative paths not already under the prefix
-              if path:sub(1, 1) == "/" and path:sub(1, 2) ~= "//"
+              local path
+              local authority, suffix = loc:match("^https?://([^/?#]+)(.*)$")
+
+              if authority then
+                -- Only strip the authority from same-origin absolute URLs.
+                local request_host = ngx.var.http_host or ngx.var.host or ""
+                if authority:lower() == request_host:lower() then
+                  if suffix == "" then
+                    path = "/"
+                  elseif suffix:sub(1, 1) == "?" then
+                    path = "/" .. suffix
+                  else
+                    path = suffix
+                  end
+                end
+              elseif loc:sub(1, 2) ~= "//" and loc:sub(1, 1) == "/" then
+                -- Root-relative URLs are same-origin by definition.
+                path = loc
+              end
+
+              -- Leave external and non-root-relative URLs unchanged.
+              if path and path:sub(1, 1) == "/"
+                 and path:sub(1, 2) ~= "//"
                  and path:sub(1, #lp) ~= lp then
                 ngx.header["Location"] = lp .. path
               end
