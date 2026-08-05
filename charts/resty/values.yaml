@@ -89,7 +89,7 @@ jupyterCollaboration:
   # or slash: the collaboration location strips its prefix via `rewrite` and
   # relies on proxy_pass having no URI part so the rewritten URI passes through.
   # Using a literal host (no nginx variable) also means the hostname resolves at
-  # config-load time via /etc/resolv.conf, like the ambassador upstream.
+  # config-load time via /etc/resolv.conf rather than through resty.dnsResolver.
   broker_url: http://jupyter-collab-broker:8888
   # -- must match jupyter-collab-broker's auth.token
   auth_token: ""

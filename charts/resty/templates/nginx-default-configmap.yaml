@@ -126,7 +126,6 @@ data:
         {{- if not .Values.DEV_PHASE.dev }}
         auth_request /auth;
         auth_request_set $remoteUser $upstream_http_remote_user;
-        auth_request_set $access_token $upstream_http_access_token;
         proxy_set_header REMOTE_USER $remoteUser;
         add_header REMOTE_USER $remoteUser;
         {{- end }}
@@ -142,33 +141,83 @@ data:
         error_page 401 403 404 500 502 503 504 = @collab_fallback;
 
         # Strip the /private/<app>/<user>/<guid> prefix so the broker sees just
-        # /api/collaboration/...  A captured backreference preserves the raw
-        # percent-encoding (verified: %20/%2F pass through unchanged) and the
-        # query string (?sessionId=...) is kept. Because proxy_pass targets a
-        # LITERAL host with no variable, nginx resolves the broker hostname at
-        # config-load time via /etc/resolv.conf -- exactly like the ambassador
-        # blocks -- so no `resolver` directive is needed.
+        # /api/collaboration/..., query string included. `rewrite` works on the
+        # decoded $uri, so %3A/%2F reach the broker decoded -- harmless for the
+        # paths JupyterLab sends. proxy_pass has no variable, so the broker
+        # hostname resolves at config load via /etc/resolv.conf, not `resolver`.
         rewrite ^/private/.+?(/api/collaboration/.*)$ $1 break;
         proxy_pass {{ .Values.jupyterCollaboration.broker_url }};
       }
 
-      # Fallback: replay the ORIGINAL request against the user's own pod via
-      # ambassador. auth_request does not run again on the internal redirect,
-      # but the $remoteUser/$access_token variables set above persist.
+      # Fallback: the broker declined (document is in the user's private home)
+      # or is down, so replay the ORIGINAL request against the user's own pod --
+      # the hop Ambassador used to make. On an internal redirect the regex
+      # captures are gone and auth_request does not re-run, so we resolve via
+      # appstore, which also verifies ownership (Ambassador set bypass_auth).
       location @collab_fallback {
         client_max_body_size 2000M;
         proxy_http_version 1.1;
         proxy_read_timeout 3600;
         proxy_send_timeout 3600;
-        {{- if not .Values.DEV_PHASE.dev }}
-        proxy_set_header REMOTE_USER $remoteUser;
-        proxy_set_header Authorization $access_token;
-        {{- else }}
+
+        set $collab_upstream '';
+
+        {{- if .Values.DEV_PHASE.dev }}
+        # dev: appstore/tycho run locally, no in-cluster resolution.
         proxy_set_header Authorization "";
+        {{- else }}
+        access_by_lua_block {
+          -- Still the original URI: the `rewrite ... break` above only changed
+          -- $uri, and a named location does not reset it.
+          local uri = ngx.var.request_uri
+
+          local app, _, guid = uri:match("^/private/([^/]+)/([^/]+)/([^/]+)/")
+          if not app then
+            ngx.log(ngx.ERR, "collab fallback: unparseable /private URI: ", uri)
+            ngx.exit(500)
+          end
+
+          local res = ngx.location.capture(
+            "/appstore-resolve",
+            { args = { uri = uri } }
+          )
+          if res.status ~= 200 then
+            -- 403 not owner, 404 not ready, 5xx. No error_page is in scope
+            -- here, so this terminates rather than looping back.
+            ngx.exit(res.status)
+          end
+
+          local port = res.header["X-Backend-Port"]
+          if not port then
+            ngx.log(ngx.ERR, "collab fallback: missing backend port")
+            ngx.exit(502)
+          end
+
+          -- Service name is {app}-{guid} (Tycho System.name). JupyterLab is
+          -- prefix-aware, so there is no X-Rewrite prefix to strip.
+          ngx.var.collab_upstream = app .. "-" .. guid
+            .. ".{{ $appsNamespace }}.{{ $dnsSuffix }}:" .. port
+
+          ngx.req.set_header("REMOTE_USER", res.header["REMOTE_USER"] or "")
+          ngx.req.set_header("Authorization", res.header["ACCESS_TOKEN"] or "")
+        }
         {{- end }}
+
+        proxy_pass http://$collab_upstream$request_uri;
+        proxy_pass_request_headers      on;
+
+        # A variable upstream would otherwise send the backend's DNS name as
+        # Host, which JupyterLab checks when accepting websocket upgrades.
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+
+        # room websockets
+        proxy_buffering off;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $http_connection;
-        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
       }
       {{- end }}
 
