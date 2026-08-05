@@ -52,8 +52,8 @@ data:
     server {
       {{- if and (.Values.SSL) (not .Values.ingress.create) }}
       listen               {{ .Values.service.httpsTargetPort }} ssl;
-      ssl_certificate      /etc/nginx/ssl/tls.crt;
-      ssl_certificate_key  /etc/nginx/ssl/tls.key;
+      ssl_certificate      /etc/resty/ssl/tls.crt;
+      ssl_certificate_key  /etc/resty/ssl/tls.key;
       {{- else }}
       # When ingress.create=true, TLS termination happens in ingress-nginx before it reaches this nginx instance
       listen               {{ .Values.service.httpTargetPort }};
