@@ -19,13 +19,13 @@ A Helm chart for Kubernetes
 | global.airflow_service_name | string | `"airflow-webserver"` |  |
 | global.ambassador_service_name | string | `"ambassador"` |  |
 | global.apps_namespace | string | `""` | Namespace where Tycho launches app pods (for /private DNS names). Defaults to the release namespace when empty. |
-| global.appstore_service_name | string | `"appstore"` | PROTOTYPE (ambassador removal): direct backend service names that were previously reached only through the "ambassador" service. Set these to match your appstore / ui / sockets Service names. |
+| global.appstore_service_name | string | `""` | Optional appstore Service name override. When empty, derives the standard appstore fullname from the Helm release name. |
 | global.appstore_sockets_service_name | string | `"appstore-sockets-service"` |  |
 | global.cluster_dns_suffix | string | `"svc.cluster.local"` |  |
 | global.dug_search_client_service_name | string | `"dug-search-client"` |  |
 | global.dug_web_service_name | string | `"dug-web"` |  |
 | global.restartr_api_service_name | string | `"restartr-api-service"` |  |
-| global.ui_service_name | string | `"helx-ui"` |  |
+| global.ui_service_name | string | `""` | Optional UI Service name override. When empty, derives the standard UI fullname from the Helm release name. |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"bitnami/openresty"` |  |
 | image.tag | float | `1.21` | Overrides the image tag whose default is the chart appVersion. |

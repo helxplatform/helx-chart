@@ -101,11 +101,12 @@ global:
   dug_web_service_name: dug-web
   dug_search_client_service_name: dug-search-client
   restartr_api_service_name: restartr-api-service
-  # -- PROTOTYPE (ambassador removal): direct backend service names that
-  # were previously reached only through the "ambassador" service. Set
-  # these to match your appstore / ui / sockets Service names.
-  appstore_service_name: appstore
-  ui_service_name: helx-ui
+  # -- Optional appstore Service name override. When empty, derives the
+  # standard appstore fullname from the Helm release name.
+  appstore_service_name: ""
+  # -- Optional UI Service name override. When empty, derives the standard
+  # UI fullname from the Helm release name.
+  ui_service_name: ""
   appstore_sockets_service_name: appstore-sockets-service
   airflow_service_name: airflow-webserver
   # -- Namespace where Tycho launches app pods (for /private DNS names).

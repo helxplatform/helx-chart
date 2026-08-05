@@ -27,12 +27,18 @@ data:
 
     {{- $appsNamespace := .Values.global.apps_namespace | default .Release.Namespace }}
     {{- $dnsSuffix := .Values.global.cluster_dns_suffix | default "svc.cluster.local" }}
+    {{- /* Match the standard fullname helpers in the appstore and UI charts.
+           Explicit values remain available for nameOverride/fullnameOverride. */}}
+    {{- $defaultAppstoreName := ternary .Release.Name (printf "%s-appstore" .Release.Name) (contains "appstore" .Release.Name) }}
+    {{- $defaultUiName := ternary .Release.Name (printf "%s-ui" .Release.Name) (contains "ui" .Release.Name) }}
+    {{- $appstoreName := .Values.global.appstore_service_name | default $defaultAppstoreName }}
+    {{- $uiName := .Values.global.ui_service_name | default $defaultUiName }}
     {{- /* Use FQDNs: any proxy_pass containing a variable (e.g. $request_uri)
            resolves via the `resolver` directive, which does not apply the
            pod's DNS search domains -- bare service names fail. Platform
            services are assumed to live in the same namespace as launched apps. */}}
-    {{- $appstore := printf "%s.%s.%s:8000" (.Values.global.appstore_service_name | default "appstore") $appsNamespace $dnsSuffix }}
-    {{- $ui := printf "%s.%s.%s:80" (.Values.global.ui_service_name | default "helx-ui") $appsNamespace $dnsSuffix }}
+    {{- $appstore := printf "%s.%s.%s:8000" $appstoreName $appsNamespace $dnsSuffix }}
+    {{- $ui := printf "%s.%s.%s:80" $uiName $appsNamespace $dnsSuffix }}
     {{- $sockets := printf "%s.%s.%s:5555" (.Values.global.appstore_sockets_service_name | default "appstore-sockets-service") $appsNamespace $dnsSuffix }}
     {{- $airflow := printf "%s.%s.%s:8080" (.Values.global.airflow_service_name | default "airflow-webserver") $appsNamespace $dnsSuffix }}
 
