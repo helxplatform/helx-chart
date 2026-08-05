@@ -4,6 +4,44 @@ metadata:
   name: {{ .Release.Name }}-default-nginx-conf
 data:
   default.conf: |
+    #####################################################################
+    # PROTOTYPE: Ambassador-free routing.
+    #
+    # Ambassador used to be an internal ClusterIP prefix-router that this
+    # OpenResty instance forwarded almost everything to (ambassador:80).
+    # It did no TLS and no auth of its own -- it only fanned requests out
+    # to backend services by path prefix, including one dynamically
+    # created Mapping per launched app (/private/{app}/{user}/{guid}).
+    #
+    # Because a launched app's Kubernetes Service name is a pure function
+    # of the URL path ({app}-{guid}, see Tycho model.py System.name), we
+    # can resolve and proxy to it directly from OpenResty with cluster DNS
+    # -- no Ambassador, no per-app config, no reloads. Static services
+    # (appstore / ui / sockets) become explicit location blocks below.
+    #####################################################################
+
+    # Cluster DNS is required so proxy_pass to a *variable* upstream is
+    # re-resolved at request time (that is what makes /private dynamic).
+    # Override with resty.dnsResolver if your cluster DNS differs.
+    resolver {{ .Values.dnsResolver | default "kube-dns.kube-system.svc.cluster.local" }} valid=10s ipv6=off;
+
+    {{- $appsNamespace := .Values.global.apps_namespace | default .Release.Namespace }}
+    {{- $dnsSuffix := .Values.global.cluster_dns_suffix | default "svc.cluster.local" }}
+    {{- /* Use FQDNs: any proxy_pass containing a variable (e.g. $request_uri)
+           resolves via the `resolver` directive, which does not apply the
+           pod's DNS search domains -- bare service names fail. Platform
+           services are assumed to live in the same namespace as launched apps. */}}
+    {{- /* Default the appstore/ui Service names to the bare chart name when
+           resty is the root chart (deployed on its own), or "<release>-<name>"
+           when it is a subchart of the umbrella (Helm prefixes subchart Service
+           names with the release name). Override via global.*_service_name. */}}
+    {{- $appstoreDefault := ternary "appstore" (printf "%s-appstore" .Release.Name) .Chart.IsRoot }}
+    {{- $uiDefault := ternary "ui" (printf "%s-ui" .Release.Name) .Chart.IsRoot }}
+    {{- $appstore := printf "%s.%s.%s:8000" (.Values.global.appstore_service_name | default $appstoreDefault) $appsNamespace $dnsSuffix }}
+    {{- $ui := printf "%s.%s.%s:80" (.Values.global.ui_service_name | default $uiDefault) $appsNamespace $dnsSuffix }}
+    {{- $sockets := printf "%s.%s.%s:5555" (.Values.global.appstore_sockets_service_name | default "appstore-sockets-service") $appsNamespace $dnsSuffix }}
+    {{- $airflow := printf "%s.%s.%s:8080" (.Values.global.airflow_service_name | default "airflow-webserver") $appsNamespace $dnsSuffix }}
+
     {{- if and (.Values.SSL) (not .Values.ingress.create) }}
     server {
       listen      {{ .Values.service.httpTargetPort }} default_server;
@@ -29,13 +67,33 @@ data:
         }
       }
 
+      # ---- helx-ui (was Ambassador Mapping: prefix /helx) ----
+      location /helx {
+        client_max_body_size 2000M;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Scheme $scheme;
+        proxy_pass http://{{ $ui }};
+        proxy_set_header requestUri $request_uri;
+      }
+
+      # ---- helx-ui static assets (was Ambassador Mapping: /static/frontend) ----
+      location /static/frontend {
+        client_max_body_size 2000M;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_pass http://{{ $ui }};
+      }
+
+      # ---- appstore-sockets status websocket (was Ambassador Mapping: /ws) ----
       location /ws {
         client_max_body_size 2000M;
         proxy_http_version 1.1;
         proxy_read_timeout 3600;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+        proxy_pass http://{{ $sockets }}$request_uri;
         proxy_pass_request_headers      on;
       }
 
@@ -115,96 +173,161 @@ data:
       {{- end }}
 
       #####################################################
-      # Location /private
+      # Location /private  (DYNAMIC -- replaces Ambassador's per-app Mapping)
       #
-      # Purpose:
-      # This block handles requests to paths starting with "/private/". It contains
-      # configurations for body size, proxy settings, authentication, header 
-      # modifications, and dynamic redirection handling.
+      # URL shape (unchanged, the UI parses it positionally):
+      #   /private/{app}/{user}/{guid}/{conn_string}/...
       #
-      # Details:
-      # - Sets the maximum allowed size of the client request body to 2000M.
-      # - Configures proxy settings including timeouts and header modifications.
-      # - Fetches dynamic value for Ambassador service name.
-      # - Contains specific settings for the Guacamole application.
-      # 
-      # REMOTE_USER and Authentication:
-      # - Uses the auth_request directive to perform subrequest authentication. Access
-      #   is allowed if subrequest returns a 2xx response, otherwise denied.
-      # - Captures authenticated user's name from the upstream's `REMOTE_USER` header 
-      #   and sets it to the Nginx variable `$remoteUser`.
-      # - This `$remoteUser` is then set as the `REMOTE_USER` header for the proxied
-      #   request, informing the downstream service of the requesting user.
-      # - Additionally, fetches access token from the upstream's `access_token` header
-      #   for further authorization.
-      #
-      # Lua Script Function:
-      # - The Lua script triggers during the header filtering phase.
-      # - Checks if the response is a redirect (HTTP status in the 3xx range).
-      # - Fetches the `X-Original-Path` and `Location` headers from upstream response.
-      # - Modifies `Location` header by:
-      #   1. Concatenating the `X-Original-Path` value (if present).
-      #   2. Removing the "https?://ambassador/" substring from the URL.
-      # - Sets the modified `Location` header for client's response, redirecting 
-      #   client to the correct modified URL.
-      #
-      # Note:
-      # - Configurations conditionally set based on .Values.DEV_PHASE.dev value.
-      # - Guacamole-specific settings disable buffering and set headers for WebSocket.
-      #
+      # For each request we ask appstore (the control plane) to resolve the
+      # backend. appstore is authoritative: it verifies the user OWNS this
+      # system (a check Ambassador never did -- it set bypass_auth: true) and
+      # returns the backend Service host, its real port, and the per-app
+      # rewrite rule. We then proxy over cluster DNS. This subrequest fires
+      # at the same frequency Ambassador's auth_request already did, so it
+      # adds no round-trip versus the old flow.
       #####################################################
-
-      location /private/ {
+      location ~ ^/private/(?<app>[^/]+)/(?<user>[^/]+)/(?<guid>[^/]+)(?<rest>/.*)?$ {
         client_max_body_size 2000M;
         proxy_http_version 1.1;
         proxy_read_timeout 3600;
+
+        set $upstream '';
+        set $upstream_uri '';
+        set $location_prefix '';
+
         {{- if .Values.DEV_PHASE.dev }}
+        # dev: appstore/tycho run locally, no in-cluster resolution.
         {{- else }}
-        auth_request /auth;
-        auth_request_set $remoteUser $upstream_http_remote_user;
-        proxy_set_header REMOTE_USER $remoteUser;
-        add_header REMOTE_USER $remoteUser;
-        auth_request_set $access_token $upstream_http_access_token;
-        proxy_set_header Authorization $access_token;
-        add_header Authorization $access_token;
+        access_by_lua_block {
+          -- Ask appstore to authorize + resolve this /private URL. Cookies
+          -- are inherited by the subrequest; pass the original path along.
+          local res = ngx.location.capture(
+            "/appstore-resolve",
+            { args = { uri = ngx.var.request_uri } }
+          )
+          if res.status ~= 200 then
+            -- 403 (not owner), 404 (not ready), 5xx (resolve failed)
+            ngx.exit(res.status)
+          end
+
+          local h = res.header
+          local port    = h["X-Backend-Port"]
+          local rewrite = h["X-Rewrite"] or ""
+          local prefix  = h["X-Prefix"] or ""
+
+          if not port then
+            ngx.log(ngx.ERR, "private resolve: missing backend port")
+            ngx.exit(502)
+          end
+
+          -- The backend Service name is deterministic from the URL path:
+          -- {app}-{guid} (Tycho System.name = f"{app_id}-{identifier}").
+          -- Build it from the regex captures rather than trusting a
+          -- resolver-returned name, so it can't drift.
+          local svc = ngx.var.app .. "-" .. ngx.var.guid
+          ngx.var.upstream = svc .. ".{{ $appsNamespace }}.{{ $dnsSuffix }}:" .. port
+
+          local uri = ngx.var.request_uri
+          if rewrite ~= "" then
+            -- Stripped apps (rstudio, webtop, cloudbeaver, ...) think they
+            -- live at "/", so their 3xx Location headers are root-relative.
+            -- Remember the prefix so header_filter_by_lua can re-add it.
+            ngx.var.location_prefix = prefix:gsub("/$", "")
+            -- Strip the app prefix and serve under the rewrite target
+            -- (e.g. rstudio's proxy-rewrite target "/"). Tolerate a
+            -- missing trailing slash on the matched prefix.
+            local stripped = uri
+            if prefix ~= "" and uri:sub(1, #prefix) == prefix then
+              stripped = uri:sub(#prefix + 1)
+            else
+              local p2 = prefix:gsub("/$", "")
+              if #p2 > 0 and uri:sub(1, #p2) == p2 then
+                stripped = uri:sub(#p2 + 1)
+              end
+            end
+            if stripped == "" then
+              ngx.var.upstream_uri = rewrite
+            elseif rewrite:sub(-1) == "/" and stripped:sub(1, 1) == "/" then
+              ngx.var.upstream_uri = rewrite .. stripped:sub(2)
+            else
+              ngx.var.upstream_uri = rewrite .. stripped
+            end
+          else
+            -- Preserve full path (prefix-aware apps: jupyter, pgadmin, ...)
+            ngx.var.upstream_uri = uri
+          end
+
+          -- Inject identity downstream, as Ambassador's REMOTE_USER header did.
+          ngx.req.set_header("REMOTE_USER", h["REMOTE_USER"] or "")
+          ngx.req.set_header("Authorization", h["ACCESS_TOKEN"] or "")
+        }
         {{- end }}
-        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+
+        proxy_pass http://$upstream$upstream_uri;
         proxy_pass_request_headers      on;
-        # for guacamole
+
+        # Forward the real client context. With a variable upstream, nginx
+        # would otherwise send Host = the backend Service DNS name; apps like
+        # pgAdmin build URLs / cookies / CSRF context from these, so preserve
+        # the external host and scheme exactly as Ambassador/Envoy did.
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+
+        # websocket upgrades (jupyter kernels, rstudio, webtop, guacamole)
         proxy_buffering off;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $http_connection;
-        # end guacamole additons
 
+        # For stripped apps, re-add the /private/{app}/{user}/{guid} prefix to
+        # redirect Location headers (the app emits root-relative/same-host
+        # redirects because it thinks it lives at "/"). This is what Ambassador
+        # + the old nginx did via X-Original-Path.
         header_filter_by_lua_block {
-          -- Check if the response is a redirect
-          if ngx.status >= 300 and ngx.status < 400 then
-            local original_path = ngx.var.upstream_http_x_original_path
-            local location = ngx.var.upstream_http_location
-      
-            ngx.log(ngx.INFO, "Status code: ", ngx.status)
-            ngx.log(ngx.INFO, "X-Original-Path header: ", original_path or "not set")
-            ngx.log(ngx.INFO, "Location header: ", location or "not set")
-      
-            if original_path and location then
-              local new_location = original_path .. location:gsub("https?://{{ .Values.global.ambassador_service_name }}/", "")
-              ngx.log(ngx.INFO, "New Location after transformation: ", new_location)
-              ngx.header["Location"] = new_location
+          local lp = ngx.var.location_prefix
+          if lp ~= "" and ngx.status >= 300 and ngx.status < 400 then
+            local loc = ngx.header["Location"]
+            if loc and loc ~= "" then
+              -- drop scheme://host from same-origin absolute URLs
+              local path = loc:gsub("^https?://[^/]+", "")
+              -- only rewrite root-relative paths not already under the prefix
+              if path:sub(1, 1) == "/" and path:sub(1, 2) ~= "//"
+                 and path:sub(1, #lp) ~= lp then
+                ngx.header["Location"] = lp .. path
+              end
             end
           end
         }
       }
 
+      # ---- internal resolver subrequest -> appstore control plane ----
+      # Verifies ownership and returns backend host/port + rewrite headers.
+      location = /appstore-resolve {
+        internal;
+        proxy_pass http://{{ $appstore }}/api/v1/private-route/;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        # Original app path the browser requested (see access_by_lua args).
+        proxy_set_header X-Original-URI $arg_uri;
+        proxy_read_timeout 30;
+      }
+
+      # ---- auth decision endpoint (was ambassador:80/auth/ -> appstore) ----
+      # Now points straight at appstore Django, which owns the auth logic.
       location = /auth {
+        internal;
         client_max_body_size 2000M;
         proxy_http_version 1.1;
-        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80/auth/;
+        proxy_pass http://{{ $appstore }}/auth/;
         proxy_read_timeout 3600;
         proxy_pass_request_body off;
         proxy_set_header        Content-Length "";
         proxy_set_header        X-Original-URI $request_uri;
       }
 
+      # ---- appstore catch-all (was Ambassador Mapping: prefix /) ----
       location / {
         client_max_body_size 2000M;
         {{- if .Values.external_http_host }}
@@ -218,7 +341,7 @@ data:
         proxy_send_timeout      60s;
         proxy_read_timeout 60s;
         proxy_http_version 1.1;
-        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80;
+        proxy_pass http://{{ $appstore }};
         proxy_set_header requestUri $request_uri;
         proxy_intercept_errors on;
         error_page 404 = @notfound;
@@ -242,8 +365,6 @@ data:
         proxy_http_version 1.1;
         proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552/;
         proxy_set_header requestUri $request_uri;
-        #proxy_intercept_errors on;
-        #error_page 404 = @fallback;
       }
 
       location /api/ {
@@ -253,16 +374,10 @@ data:
         proxy_http_version 1.1;
         proxy_pass http://{{ .Values.global.restartr_api_service_name }}:5552$request_uri;
         proxy_set_header requestUri $request_uri;
-        #proxy_intercept_errors on;
-        #error_page 404 = @fallback;
       }
-
-      #location @fallback {
-      #        try_files /var/www/flasgger/flasgger/ui3/static/ =500;
-      #}
       {{- end }}
 
-      # Makes /airflow/ accessible if not authenticated
+      # ---- airflow (was proxied via ambassador) ----
       location /airflow {
         proxy_http_version 1.1;
         {{- if .Values.DEV_PHASE.dev }}
@@ -278,9 +393,28 @@ data:
         {{- end }}
         {{- end }}
         proxy_set_header Host $http_host;
-        proxy_pass http://{{ .Values.global.ambassador_service_name }}:80$request_uri;
+        proxy_pass http://{{ $airflow }}$request_uri;
         proxy_pass_request_headers  on;
       }
+
+      {{- if .Values.artifactCache.enabled }}
+      # ---- artifact-cache (replaces the ambassador Mapping: prefix /artifact/
+      #      -> artifact-cache:8080). Used by air-gapped envs to serve the
+      #      helx-apps registry/specs (and browser-side app assets) in-cluster.
+      #      The trailing slash on proxy_pass strips the /artifact/ prefix, so
+      #      /artifact/assets/... reaches the cache as /assets/... (Ambassador's
+      #      default rewrite). Set artifactCache.authenticate=true to gate it. ----
+      location /artifact/ {
+        proxy_http_version 1.1;
+        {{- if .Values.artifactCache.authenticate }}
+        auth_request /auth;
+        auth_request_set $remoteUser $upstream_http_remote_user;
+        proxy_set_header REMOTE_USER $remoteUser;
+        {{- end }}
+        proxy_set_header Host $http_host;
+        proxy_pass http://{{ .Values.artifactCache.serviceName }}.{{ $appsNamespace }}.{{ $dnsSuffix }}:{{ .Values.artifactCache.port }}/;
+      }
+      {{- end }}
 
       {{- if .Values.stubStatus.enabled }}
       location {{ .Values.stubStatus.stubStatusLocation }} {

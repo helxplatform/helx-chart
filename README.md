@@ -2,7 +2,7 @@
 
 A Helm chart for deploying HeLx to Kubernetes.
 
-![Version: 4.5.4](https://img.shields.io/badge/Version-4.5.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.6.5](https://img.shields.io/badge/AppVersion-3.6.5-informational?style=flat-square)
+![Version: 4.5.8](https://img.shields.io/badge/Version-4.5.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.6.5](https://img.shields.io/badge/AppVersion-3.6.5-informational?style=flat-square)
 
 HeLx puts the most advanced analytical scientific models at investigator’s finger tips using equally advanced cloud native, container orchestrated, distributed computing systems. HeLx can be applied in many domains. Its ability to empower researchers to leverage advanced analytical tools without installation or other infrastructure concerns has broad reaching benefits.
 
@@ -68,9 +68,11 @@ You can view the README.md files for each subchart to see the variables that exi
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| ambassador.enabled | bool | `true` | enable/disable deployment of Ambassador |
+| ambassador | object | `{"enabled":false}` | ------------------------------------------------------------------------ |
+| ambassador.enabled | bool | `false` | enable/disable deployment of Ambassador (retired in the de-Ambassador design) |
 | appstore-sockets.enabled | bool | `true` | enable/disable deployment of appstore websockets service |
 | appstore.enabled | bool | `true` | enable/disable deployment of appstore |
+| appstore.tycho.appRoutingMode | string | `"proxy"` | routing data plane for Tycho-launched apps: "proxy" (ClusterIP + /private, resolved by appstore via resty) or "ambassador" (legacy). |
 | backup-pvc-cronjob.enabled | bool | `false` | enable/disable deployment of backup-pvc-cronjob |
 | global.ambassador_service_name | string | `"ambassador"` |  |
 | global.redis.existingSecret | string | `"redis-secret"` |  |
@@ -81,9 +83,9 @@ You can view the README.md files for each subchart to see the variables that exi
 | monitoring.enabled | bool | `false` | enable/disable deployment of monitoring (kube-prometheus-stack, cost-analyzer, etc.) |
 | nfs-server.enabled | bool | `false` | enable/disable deployment of nfs-server |
 | nfsrods.enabled | bool | `false` | enable/disable deployment of nfsrods |
-| nginx.enabled | bool | `true` | enable/disable deployment of nginx |
+| nginx.enabled | bool | `false` | enable/disable deployment of nginx (retired; replaced by resty) |
 | pod-reaper.enabled | bool | `true` | enable/disable deployment of pod-reaper |
-| resty.enabled | bool | `false` | enable/disable deployment of nginx |
+| resty.enabled | bool | `true` | enable/disable deployment of resty (the edge/data plane; replaces nginx) |
 | search.enabled | bool | `false` | enable/disable deployment of search |
 | ui.enabled | bool | `true` | enable/disable deployment of helx-ui |
 
