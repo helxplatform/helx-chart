@@ -32,6 +32,9 @@ dependencies:
   - name: image-utils
     condition: image-utils.enabled
     version: "^1.0.0"
+  - name: jupyter-collab-broker
+    condition: jupyter-collab-broker.enabled
+    version: "^0.1.0"
   - name: monitoring
     condition: monitoring.enabled
     version: "^0.2.0"

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "jupyter-collab-broker.fullname" . }}-config
+  labels:
+    {{- include "jupyter-collab-broker.labels" . | nindent 4 }}
+data:
+  jupyter_server_config.py: |
+    import os
+
+    c = get_config()  # noqa
+
+    c.ServerApp.ip = "0.0.0.0"
+    c.ServerApp.port = {{ .Values.service.port }}
+    c.ServerApp.base_url = "/"
+    c.ServerApp.root_dir = {{ .Values.rootDir | quote }}
+    c.ServerApp.allow_origin = "*"
+    c.ServerApp.allow_remote_access = True
+    c.ServerApp.open_browser = False
+    c.ServerApp.terminals_enabled = False
+
+    # Only the resty proxy holds this token; end-user requests reach the
+    # broker exclusively through resty, which injects it.
+    c.IdentityProvider.token = os.environ["COLLAB_BROKER_TOKEN"]
+
+    # CRITICAL: a LocalFileIdManager checks the disk, so the session PUT returns
+    # 404 for paths that do not exist under root_dir -- that 404 is what makes
+    # resty fall back to the user's own pod for private (non-shared) files.
+    # The default ArbitraryFileIdManager never returns 404 and would capture
+    # every document on the platform into broker rooms.
+    #
+    # We use HelxLocalFileIdManager (shipped in the image via /helx/lib) rather
+    # than the stock LocalFileIdManager: the broker's root is shared storage
+    # containing owner-only (0700) directories the broker's uid cannot open
+    # (trash, private scratch, ...), and stock LocalFileIdManager aborts its
+    # whole startup tree-index on the first PermissionError, taking the fileid
+    # (and thus ydoc/collaboration) extension down. The subclass skips
+    # unreadable directories and keeps the disk-checking 404 behavior.
+    c.FileIdExtension.file_id_manager_class = "helx_fileid.HelxLocalFileIdManager"
+    # Traits are configured under the subclass name so they apply unambiguously.
+    c.HelxLocalFileIdManager.db_path = "/var/lib/collab/file_id_manager.db"
+    # WAL journaling is unsafe on network-backed volumes.
+    c.HelxLocalFileIdManager.db_journal_mode = "DELETE"
+
+    c.SQLiteYStore.db_path = "/var/lib/collab/jupyter_ystore.db"
+    # Bound crdt history growth for long-lived documents.
+    c.SQLiteYStore.squash_after_inactivity_of = 86400

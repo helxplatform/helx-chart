@@ -35,6 +35,10 @@ nfs-server:
 nfsrods:
   # -- enable/disable deployment of nfsrods
   enabled: false
+jupyter-collab-broker:
+  # -- enable/disable deployment of the central JupyterLab collaboration
+  # broker (requires resty with jupyterCollaboration.enabled)
+  enabled: false
 nginx:
   # -- enable/disable deployment of nginx (retired; replaced by resty)
   enabled: false

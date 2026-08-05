@@ -1,0 +1,79 @@
+# Central JupyterLab real-time-collaboration (RTC) server. User notebook pods
+# keep their own jupyter servers; the resty proxy routes /api/collaboration/*
+# here so that everyone editing a document under shared storage lands in the
+# same ydoc room. Requests for files the broker cannot see (users' private
+# homes) return 404/500 and resty falls back to the user's own pod.
+#
+# The image must carry the same pinned RTC stack (jupyter-collaboration,
+# jupyter-ydoc, jupyterlab-chat...) as the user notebook images -- schema skew
+# breaks shared rooms. minimal-poetry-notebook is the common base that pins it.
+image:
+  repository: containers.renci.org/helxplatform/jupyter/minimal-poetry-notebook
+  tag: python-3.10
+  pullPolicy: IfNotPresent
+
+# Must remain 1: collaboration rooms live in process memory and the fileid /
+# ystore sqlite databases are single-writer.
+replicaCount: 1
+
+service:
+  # Static default so resty's default jupyterCollaboration.broker_url
+  # (http://jupyter-collab-broker:8888) resolves without extra configuration.
+  name: jupyter-collab-broker
+  port: 8888
+
+auth:
+  # Token the resty proxy injects on proxied /api/collaboration requests.
+  # Required (or set existingSecret). Must equal resty's
+  # jupyterCollaboration.auth_token.
+  token: ""
+  # Name of an existing Secret with key "token"; takes precedence over token.
+  existingSecret: ""
+
+# Match the uid/gid of tycho-launched user notebook pods so files autosaved by
+# the broker remain writable by users on the shared filesystem.
+securityContext:
+  runAsUser: 30000
+  runAsGroup: 0
+  fsGroup: 0
+
+# The broker's jupyter root. RTC rooms are keyed on the document path relative
+# to the jupyter root, so entries below must line up with how user pods see
+# the same storage.
+rootDir: /collab
+
+# Shared storage served by the broker; each entry is mounted at
+# {rootDir}/{mountName}. mountName MUST equal the canonical symlink basename
+# created in user homes by minimal-poetry-notebook's
+# helx-startup/13-shared-links.sh (the basename of the mount path in user
+# pods), e.g. /home/shared -> "shared", /shared/renci-all -> "renci-all".
+sharedVolumes: []
+#  - name: stdnfs-shared
+#    pvcName: stdnfs
+#    subPath: shared
+#    mountName: shared
+#  - name: renci-all
+#    pvcName: group-renci-all
+#    mountName: renci-all
+
+# State volume at /var/lib/collab holding file_id_manager.db and
+# jupyter_ystore.db. Persisting it keeps fileIds stable across broker restarts,
+# so reconnecting clients recover through JupyterLab's "session expired,
+# reload" dialog instead of retrying rooms that no longer exist.
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+  existingClaim: ""
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

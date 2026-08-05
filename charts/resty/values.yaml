@@ -78,6 +78,22 @@ basicAuth:
 
 restartrApi: false
 
+# -- Central JupyterLab real-time-collaboration broker (see the
+# jupyter-collab-broker chart). When enabled, /api/collaboration/* requests
+# under /private/ are proxied to the broker with auth_token injected; the
+# broker Service must exist or nginx will fail to start (the proxy_pass
+# hostname resolves at config load).
+jupyterCollaboration:
+  enabled: false
+  # -- Broker base URL. Must be a bare scheme://host:port with NO trailing path
+  # or slash: the collaboration location strips its prefix via `rewrite` and
+  # relies on proxy_pass having no URI part so the rewritten URI passes through.
+  # Using a literal host (no nginx variable) also means the hostname resolves at
+  # config-load time via /etc/resolv.conf rather than through resty.dnsResolver.
+  broker_url: http://jupyter-collab-broker:8888
+  # -- must match jupyter-collab-broker's auth.token
+  auth_token: ""
+
 # -- If using an external http proxy host set this to true and specify serverName.  Used for TACC.
 external_http_host: false
 

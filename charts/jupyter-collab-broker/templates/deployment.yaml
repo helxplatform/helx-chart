@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jupyter-collab-broker.fullname" . }}
+  labels:
+    {{- include "jupyter-collab-broker.labels" . | nindent 4 }}
+spec:
+  # Rooms are in-memory and the sqlite state is single-writer: never run two
+  # brokers, not even during a rollout.
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "jupyter-collab-broker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jupyter-collab-broker.labels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: broker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # The broker uid has no passwd entry, so give it a writable HOME on
+          # the state volume for jupyter's data/runtime dirs.
+          command: ["/bin/bash", "-c"]
+          args:
+            - mkdir -p "$HOME" &&
+              exec jupyter server --config=/etc/jupyter-collab/jupyter_server_config.py
+          workingDir: /var/lib/collab
+          env:
+            - name: HOME
+              value: /var/lib/collab/home
+            - name: COLLAB_BROKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jupyter-collab-broker.secretName" . }}
+                  key: token
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/jupyter-collab
+            - name: state
+              mountPath: /var/lib/collab
+            # Guarantees rootDir exists and is writable even with no shared
+            # volumes configured yet.
+            - name: root-dir
+              mountPath: {{ .Values.rootDir }}
+            {{- range .Values.sharedVolumes }}
+            - name: {{ .name }}
+              mountPath: {{ $.Values.rootDir }}/{{ .mountName }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "jupyter-collab-broker.fullname" . }}-config
+        - name: root-dir
+          emptyDir: {}
+        - name: state
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-state" (include "jupyter-collab-broker.fullname" .)) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- range .Values.sharedVolumes }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ .pvcName }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
