@@ -131,7 +131,16 @@ data:
             { args = { uri = ngx.var.request_uri } }
           )
           if res.status ~= 200 then
-            -- 403 (not owner), 404 (not ready), 5xx (resolve failed)
+            -- Preserve appstore's login redirect for expired sessions. Without
+            -- forwarding Location, the client receives a bare 302 response.
+            if res.status >= 300 and res.status < 400 then
+              local location = res.header["Location"] or res.header["location"]
+              if location then
+                ngx.header["Location"] = location
+              end
+            end
+            -- 403 (not owner), 404 (not ready), 3xx (auth redirect),
+            -- 5xx (resolve failed)
             ngx.exit(res.status)
           end
 
