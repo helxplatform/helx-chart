@@ -25,22 +25,18 @@ data:
     # Override with resty.dnsResolver if your cluster DNS differs.
     resolver {{ .Values.dnsResolver | default "kube-dns.kube-system.svc.cluster.local" }} valid=10s ipv6=off;
 
-    {{- $appsNamespace := .Values.global.apps_namespace | default .Release.Namespace }}
+    {{- $namespace := .Release.Namespace }}
     {{- $dnsSuffix := .Values.global.cluster_dns_suffix | default "svc.cluster.local" }}
-    {{- /* Use FQDNs: any proxy_pass containing a variable (e.g. $request_uri)
-           resolves via the `resolver` directive, which does not apply the
-           pod's DNS search domains -- bare service names fail. Platform
-           services are assumed to live in the same namespace as launched apps. */}}
     {{- /* Default the appstore/ui Service names to the bare chart name when
            resty is the root chart (deployed on its own), or "<release>-<name>"
            when it is a subchart of the umbrella (Helm prefixes subchart Service
            names with the release name). Override via global.*_service_name. */}}
     {{- $appstoreDefault := ternary "appstore" (printf "%s-appstore" .Release.Name) .Chart.IsRoot }}
     {{- $uiDefault := ternary "ui" (printf "%s-ui" .Release.Name) .Chart.IsRoot }}
-    {{- $appstore := printf "%s.%s.%s:8000" (.Values.global.appstore_service_name | default $appstoreDefault) $appsNamespace $dnsSuffix }}
-    {{- $ui := printf "%s.%s.%s:80" (.Values.global.ui_service_name | default $uiDefault) $appsNamespace $dnsSuffix }}
-    {{- $sockets := printf "%s.%s.%s:5555" (.Values.global.appstore_sockets_service_name | default "appstore-sockets-service") $appsNamespace $dnsSuffix }}
-    {{- $airflow := printf "%s.%s.%s:8080" (.Values.global.airflow_service_name | default "airflow-webserver") $appsNamespace $dnsSuffix }}
+    {{- $appstore := printf "%s.%s.%s:8000" (.Values.global.appstore_service_name | default $appstoreDefault) $namespace $dnsSuffix }}
+    {{- $ui := printf "%s.%s.%s:80" (.Values.global.ui_service_name | default $uiDefault) $namespace $dnsSuffix }}
+    {{- $sockets := printf "%s.%s.%s:5555" (.Values.global.appstore_sockets_service_name | default "appstore-sockets-service") $namespace $dnsSuffix }}
+    {{- $airflow := printf "%s.%s.%s:8080" (.Values.global.airflow_service_name | default "airflow-webserver") $namespace $dnsSuffix }}
 
     {{- if and (.Values.SSL) (not .Values.ingress.create) }}
     server {
@@ -52,8 +48,8 @@ data:
     server {
       {{- if and (.Values.SSL) (not .Values.ingress.create) }}
       listen               {{ .Values.service.httpsTargetPort }} ssl;
-      ssl_certificate      /etc/nginx/ssl/tls.crt;
-      ssl_certificate_key  /etc/nginx/ssl/tls.key;
+      ssl_certificate      /etc/resty/ssl/tls.crt;
+      ssl_certificate_key  /etc/resty/ssl/tls.key;
       {{- else }}
       # When ingress.create=true, TLS termination happens in ingress-nginx before it reaches this nginx instance
       listen               {{ .Values.service.httpTargetPort }};
@@ -131,7 +127,16 @@ data:
             { args = { uri = ngx.var.request_uri } }
           )
           if res.status ~= 200 then
-            -- 403 (not owner), 404 (not ready), 5xx (resolve failed)
+            -- Preserve appstore's login redirect for expired sessions. Without
+            -- forwarding Location, the client receives a bare 302 response.
+            if res.status >= 300 and res.status < 400 then
+              local location = res.header["Location"] or res.header["location"]
+              if location then
+                ngx.header["Location"] = location
+              end
+            end
+            -- 403 (not owner), 404 (not ready), 3xx (auth redirect),
+            -- 5xx (resolve failed)
             ngx.exit(res.status)
           end
 
@@ -150,7 +155,7 @@ data:
           -- Build it from the regex captures rather than trusting a
           -- resolver-returned name, so it can't drift.
           local svc = ngx.var.app .. "-" .. ngx.var.guid
-          ngx.var.upstream = svc .. ".{{ $appsNamespace }}.{{ $dnsSuffix }}:" .. port
+          ngx.var.upstream = svc .. ".{{ $namespace }}.{{ $dnsSuffix }}:" .. port
 
           local uri = ngx.var.request_uri
           if rewrite ~= "" then
@@ -215,10 +220,29 @@ data:
           if lp ~= "" and ngx.status >= 300 and ngx.status < 400 then
             local loc = ngx.header["Location"]
             if loc and loc ~= "" then
-              -- drop scheme://host from same-origin absolute URLs
-              local path = loc:gsub("^https?://[^/]+", "")
-              -- only rewrite root-relative paths not already under the prefix
-              if path:sub(1, 1) == "/" and path:sub(1, 2) ~= "//"
+              local path
+              local authority, suffix = loc:match("^https?://([^/?#]+)(.*)$")
+
+              if authority then
+                -- Only strip the authority from same-origin absolute URLs.
+                local request_host = ngx.var.http_host or ngx.var.host or ""
+                if authority:lower() == request_host:lower() then
+                  if suffix == "" then
+                    path = "/"
+                  elseif suffix:sub(1, 1) == "?" then
+                    path = "/" .. suffix
+                  else
+                    path = suffix
+                  end
+                end
+              elseif loc:sub(1, 2) ~= "//" and loc:sub(1, 1) == "/" then
+                -- Root-relative URLs are same-origin by definition.
+                path = loc
+              end
+
+              -- Leave external and non-root-relative URLs unchanged.
+              if path and path:sub(1, 1) == "/"
+                 and path:sub(1, 2) ~= "//"
                  and path:sub(1, #lp) ~= lp then
                 ngx.header["Location"] = lp .. path
               end
@@ -337,7 +361,7 @@ data:
         proxy_set_header REMOTE_USER $remoteUser;
         {{- end }}
         proxy_set_header Host $http_host;
-        proxy_pass http://{{ .Values.artifactCache.serviceName }}.{{ $appsNamespace }}.{{ $dnsSuffix }}:{{ .Values.artifactCache.port }}/;
+        proxy_pass http://{{ .Values.artifactCache.serviceName }}.{{ $namespace }}.{{ $dnsSuffix }}:{{ .Values.artifactCache.port }}/;
       }
       {{- end }}
 

@@ -16,7 +16,7 @@ version: 4.5.9
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 3.6.5
+appVersion: 3.7.5
 
 dependencies:
   - name: ambassador

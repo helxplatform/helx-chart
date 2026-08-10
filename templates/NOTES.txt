@@ -6,7 +6,32 @@ Use the following commands to get information about how to log in to the HeLx we
 DJANGO_ADMIN_USERNAME=`kubectl -n {{ .Release.Namespace }} get secret {{ .Release.Name }}-appstore -o jsonpath="{.data.APPSTORE_DJANGO_USERNAME}" | base64 --decode` && \
 DJANGO_ADMIN_PASSWORD=`kubectl -n {{ .Release.Namespace }} get secret {{ .Release.Name }}-appstore -o jsonpath="{.data.APPSTORE_DJANGO_PASSWORD}" | base64 --decode` && \
 {{- end }}
-{{- if .Values.nginx.enabled }}
+{{- $restyChartName := .Values.resty.nameOverride | default "resty" }}
+{{- $restyName := .Release.Name }}
+{{- if .Values.resty.fullnameOverride }}
+{{- $restyName = .Values.resty.fullnameOverride }}
+{{- else if not (contains $restyChartName .Release.Name) }}
+{{- $restyName = printf "%s-%s" .Release.Name $restyChartName }}
+{{- end }}
+{{- if .Values.resty.enabled }}
+{{- if .Values.resty.ingress.create }}
+printf "\nDjango admin username: $DJANGO_ADMIN_USERNAME\n" && \
+printf '%s\n' "Django admin password: $DJANGO_ADMIN_PASSWORD" && \
+printf "Django admin URL     : {{ .Values.appstore.ACCOUNT_DEFAULT_HTTP_PROTOCOL }}://{{ .Values.resty.service.serverName }}/admin\n" && \
+printf "HeLx URL             : {{ .Values.appstore.ACCOUNT_DEFAULT_HTTP_PROTOCOL }}://{{ .Values.resty.service.serverName }}\n\n"
+{{- else if eq .Values.resty.service.serverName "_" }}
+HELX_IP=`kubectl -n {{ .Release.Namespace }} get svc {{ $restyName }} -o jsonpath="{.status.loadBalancer.ingress[*].ip}"` && \
+printf "\nDjango admin username: $DJANGO_ADMIN_USERNAME\n" && \
+printf '%s\n' "Django admin password: $DJANGO_ADMIN_PASSWORD" && \
+printf "Django admin URL     : {{ .Values.appstore.ACCOUNT_DEFAULT_HTTP_PROTOCOL }}://$HELX_IP/admin\n" && \
+printf "HeLx URL             : {{ .Values.appstore.ACCOUNT_DEFAULT_HTTP_PROTOCOL }}://$HELX_IP\n\n"
+{{- else }}
+printf "\nDjango admin username: $DJANGO_ADMIN_USERNAME\n" && \
+printf '%s\n' "Django admin password: $DJANGO_ADMIN_PASSWORD" && \
+printf "Django admin URL     : {{ .Values.appstore.ACCOUNT_DEFAULT_HTTP_PROTOCOL }}://{{ .Values.resty.service.serverName }}/admin\n" && \
+printf "HeLx URL             : {{ .Values.appstore.ACCOUNT_DEFAULT_HTTP_PROTOCOL }}://{{ .Values.resty.service.serverName }}\n\n"
+{{- end }}
+{{- else if .Values.nginx.enabled }}
 {{- if eq .Values.nginx.service.serverName "_" }}
 HELX_IP=`kubectl -n {{ .Release.Namespace }} get svc {{ .Release.Name }}-nginx -o jsonpath="{.status.loadBalancer.ingress[*].ip}"` && \
 printf "\nDjango admin username: $DJANGO_ADMIN_USERNAME\n" && \

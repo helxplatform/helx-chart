@@ -101,19 +101,16 @@ global:
   dug_web_service_name: dug-web
   dug_search_client_service_name: dug-search-client
   restartr_api_service_name: restartr-api-service
-  # -- PROTOTYPE (ambassador removal): direct backend service names that
+  # -- (Ambassador removal): direct backend service names that
   # were previously reached only through the "ambassador" service.
-  # appstore_service_name / ui_service_name: leave null to auto-derive — the
-  # bare chart name ("appstore"/"ui") when resty is deployed on its own, or
-  # "<release>-appstore"/"<release>-ui" when deployed as a subchart of the
-  # umbrella. Set explicitly only if your Service names differ.
-  appstore_service_name:
-  ui_service_name:
+  # Leave empty to auto-derive the bare chart name ("appstore"/"ui") when
+  # resty is deployed on its own, or "<release>-appstore"/"<release>-ui"
+  # when deployed as a subchart of the umbrella. Set explicitly only if
+  # your Service names differ.
+  appstore_service_name: ""
+  ui_service_name: ""
   appstore_sockets_service_name: appstore-sockets-service
   airflow_service_name: airflow-webserver
-  # -- Namespace where Tycho launches app pods (for /private DNS names).
-  # Defaults to the release namespace when empty.
-  apps_namespace: ""
   cluster_dns_suffix: svc.cluster.local
 
 # -- Optional /artifact route to an in-cluster artifact-cache service (replaces

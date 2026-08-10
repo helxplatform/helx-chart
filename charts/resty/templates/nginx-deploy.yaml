@@ -31,7 +31,7 @@ spec:
           subPath: nginx.conf
         {{- if .Values.SSL }}
         - name: secret-volume
-          mountPath: /opt/bitnami/openresty/nginx/conf/certs
+          mountPath: /etc/resty/ssl
         {{- end }}
 #        {{- if .Values.varStorage.claimName }}
 #        - name: var-mounts-claim
@@ -55,7 +55,7 @@ spec:
         {{- if .Values.SSL }}
         - name: secret-volume
           secret:
-            secretName: {{ .Values.SSL.nginxTLSSecret }}
+            secretName: {{ .Values.SSL.restyTLSSecret }}
         {{- end }}
         {{- if .Values.varStorage.claimName }}
         - name: var-mounts-claim

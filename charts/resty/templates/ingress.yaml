@@ -20,7 +20,7 @@ spec:
   tls:
   - hosts:
       - "{{ .Values.service.serverName }}"
-    secretName: "{{ .Values.SSL.nginxTLSSecret }}"
+    secretName: "{{ .Values.SSL.restyTLSSecret }}"
 {{- end}}
   rules:
   - host: "{{ .Values.service.serverName }}"
@@ -51,7 +51,7 @@ spec:
   tls:
   - hosts:
       - "{{ .Values.service.serverName }}"
-    secretName: "{{ .Values.SSL.nginxTLSSecret }}"
+    secretName: "{{ .Values.SSL.restyTLSSecret }}"
 {{- end}}
   rules:
   - host: "{{ .Values.service.serverName }}"
