@@ -27,18 +27,14 @@ data:
 
     {{- $namespace := .Release.Namespace }}
     {{- $dnsSuffix := .Values.global.cluster_dns_suffix | default "svc.cluster.local" }}
-    {{- /* Match the standard fullname helpers in the appstore and UI charts.
-           Explicit values remain available for nameOverride/fullnameOverride.
-           Platform Services and launched apps share the release namespace. */}}
-    {{- $defaultAppstoreName := ternary .Release.Name (printf "%s-appstore" .Release.Name) (contains "appstore" .Release.Name) }}
-    {{- $defaultUiName := ternary .Release.Name (printf "%s-ui" .Release.Name) (contains "ui" .Release.Name) }}
-    {{- $appstoreName := .Values.global.appstore_service_name | default $defaultAppstoreName }}
-    {{- $uiName := .Values.global.ui_service_name | default $defaultUiName }}
-    {{- /* Use FQDNs: any proxy_pass containing a variable (e.g. $request_uri)
-           resolves via the `resolver` directive, which does not apply the
-           pod's DNS search domains -- bare service names fail. */}}
-    {{- $appstore := printf "%s.%s.%s:8000" $appstoreName $namespace $dnsSuffix }}
-    {{- $ui := printf "%s.%s.%s:80" $uiName $namespace $dnsSuffix }}
+    {{- /* Default the appstore/ui Service names to the bare chart name when
+           resty is the root chart (deployed on its own), or "<release>-<name>"
+           when it is a subchart of the umbrella (Helm prefixes subchart Service
+           names with the release name). Override via global.*_service_name. */}}
+    {{- $appstoreDefault := ternary "appstore" (printf "%s-appstore" .Release.Name) .Chart.IsRoot }}
+    {{- $uiDefault := ternary "ui" (printf "%s-ui" .Release.Name) .Chart.IsRoot }}
+    {{- $appstore := printf "%s.%s.%s:8000" (.Values.global.appstore_service_name | default $appstoreDefault) $namespace $dnsSuffix }}
+    {{- $ui := printf "%s.%s.%s:80" (.Values.global.ui_service_name | default $uiDefault) $namespace $dnsSuffix }}
     {{- $sockets := printf "%s.%s.%s:5555" (.Values.global.appstore_sockets_service_name | default "appstore-sockets-service") $namespace $dnsSuffix }}
     {{- $airflow := printf "%s.%s.%s:8080" (.Values.global.airflow_service_name | default "airflow-webserver") $namespace $dnsSuffix }}
 
@@ -349,6 +345,25 @@ data:
         proxy_pass http://{{ $airflow }}$request_uri;
         proxy_pass_request_headers  on;
       }
+
+      {{- if .Values.artifactCache.enabled }}
+      # ---- artifact-cache (replaces the ambassador Mapping: prefix /artifact/
+      #      -> artifact-cache:8080). Used by air-gapped envs to serve the
+      #      helx-apps registry/specs (and browser-side app assets) in-cluster.
+      #      The trailing slash on proxy_pass strips the /artifact/ prefix, so
+      #      /artifact/assets/... reaches the cache as /assets/... (Ambassador's
+      #      default rewrite). Set artifactCache.authenticate=true to gate it. ----
+      location /artifact/ {
+        proxy_http_version 1.1;
+        {{- if .Values.artifactCache.authenticate }}
+        auth_request /auth;
+        auth_request_set $remoteUser $upstream_http_remote_user;
+        proxy_set_header REMOTE_USER $remoteUser;
+        {{- end }}
+        proxy_set_header Host $http_host;
+        proxy_pass http://{{ .Values.artifactCache.serviceName }}.{{ $namespace }}.{{ $dnsSuffix }}:{{ .Values.artifactCache.port }}/;
+      }
+      {{- end }}
 
       {{- if .Values.stubStatus.enabled }}
       location {{ .Values.stubStatus.stubStatusLocation }} {

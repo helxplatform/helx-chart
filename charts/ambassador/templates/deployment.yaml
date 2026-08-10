@@ -39,6 +39,8 @@ spec:
           value: "true"
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
         livenessProbe:
           httpGet:
             path: /ambassador/v0/check_alive
@@ -69,6 +71,8 @@ spec:
       - name: logrotate
         image: "{{ .Values.logrotateImage.repository }}:{{ .Values.logrotateImage.tag }}"
         imagePullPolicy: {{ .Values.logrotateImage.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
         command:
         - /bin/sh
         - -c

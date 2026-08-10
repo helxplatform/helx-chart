@@ -101,12 +101,24 @@ global:
   dug_web_service_name: dug-web
   dug_search_client_service_name: dug-search-client
   restartr_api_service_name: restartr-api-service
-  # -- Optional appstore Service name override. When empty, derives the
-  # standard appstore fullname from the Helm release name.
+  # -- (Ambassador removal): direct backend service names that
+  # were previously reached only through the "ambassador" service.
+  # Leave empty to auto-derive the bare chart name ("appstore"/"ui") when
+  # resty is deployed on its own, or "<release>-appstore"/"<release>-ui"
+  # when deployed as a subchart of the umbrella. Set explicitly only if
+  # your Service names differ.
   appstore_service_name: ""
-  # -- Optional UI Service name override. When empty, derives the standard
-  # UI fullname from the Helm release name.
   ui_service_name: ""
   appstore_sockets_service_name: appstore-sockets-service
   airflow_service_name: airflow-webserver
   cluster_dns_suffix: svc.cluster.local
+
+# -- Optional /artifact route to an in-cluster artifact-cache service (replaces
+# the ambassador Mapping for /artifact). Enable in envs that serve the helx-apps
+# registry/specs from an artifact cache (e.g. air-gapped OpenShift). Off by
+# default. Set authenticate=true to require the auth_request gate on /artifact.
+artifactCache:
+  enabled: false
+  serviceName: artifact-cache
+  port: 8080
+  authenticate: false
