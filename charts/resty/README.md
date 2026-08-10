@@ -19,7 +19,7 @@ A Helm chart for Kubernetes
 | fullnameOverride | string | `""` |  |
 | global.airflow_service_name | string | `"airflow-webserver"` |  |
 | global.ambassador_service_name | string | `"ambassador"` |  |
-| global.appstore_service_name | string | `""` | PROTOTYPE (ambassador removal): direct backend service names that were previously reached only through the "ambassador" service. Leave empty to auto-derive the bare chart name ("appstore"/"ui") when resty is deployed on its own, or "<release>-appstore"/"<release>-ui" when deployed as a subchart of the umbrella. Set explicitly only if your Service names differ. |
+| global.appstore_service_name | Ambassador removal | `""` | : direct backend service names that were previously reached only through the "ambassador" service. Leave empty to auto-derive the bare chart name ("appstore"/"ui") when resty is deployed on its own, or "<release>-appstore"/"<release>-ui" when deployed as a subchart of the umbrella. Set explicitly only if your Service names differ. |
 | global.appstore_sockets_service_name | string | `"appstore-sockets-service"` |  |
 | global.cluster_dns_suffix | string | `"svc.cluster.local"` |  |
 | global.dug_search_client_service_name | string | `"dug-search-client"` |  |
