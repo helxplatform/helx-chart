@@ -90,8 +90,38 @@ stubStatus:
   localhostOnly: true
   stubStatusLocation: "/nginx_status"
 
+# -- PROTOTYPE (ambassador removal): cluster DNS used to re-resolve the
+# dynamic /private/ upstreams at request time. Must point at your cluster
+# DNS (CoreDNS/kube-dns). Some nginx builds require an IP here rather than
+# a name -- set the CoreDNS service ClusterIP if the hostname form fails.
+dnsResolver: kube-dns.kube-system.svc.cluster.local
+
 global:
   ambassador_service_name: ambassador
   dug_web_service_name: dug-web
   dug_search_client_service_name: dug-search-client
   restartr_api_service_name: restartr-api-service
+  # -- PROTOTYPE (ambassador removal): direct backend service names that
+  # were previously reached only through the "ambassador" service.
+  # appstore_service_name / ui_service_name: leave null to auto-derive — the
+  # bare chart name ("appstore"/"ui") when resty is deployed on its own, or
+  # "<release>-appstore"/"<release>-ui" when deployed as a subchart of the
+  # umbrella. Set explicitly only if your Service names differ.
+  appstore_service_name:
+  ui_service_name:
+  appstore_sockets_service_name: appstore-sockets-service
+  airflow_service_name: airflow-webserver
+  # -- Namespace where Tycho launches app pods (for /private DNS names).
+  # Defaults to the release namespace when empty.
+  apps_namespace: ""
+  cluster_dns_suffix: svc.cluster.local
+
+# -- Optional /artifact route to an in-cluster artifact-cache service (replaces
+# the ambassador Mapping for /artifact). Enable in envs that serve the helx-apps
+# registry/specs from an artifact cache (e.g. air-gapped OpenShift). Off by
+# default. Set authenticate=true to require the auth_request gate on /artifact.
+artifactCache:
+  enabled: false
+  serviceName: artifact-cache
+  port: 8080
+  authenticate: false
