@@ -1,6 +1,6 @@
 # resty
 
-![Version: 1.0.5](https://img.shields.io/badge/Version-1.0.5-informational?style=flat-square) ![AppVersion: 2.0.1](https://img.shields.io/badge/AppVersion-2.0.1-informational?style=flat-square)
+![Version: 1.0.6](https://img.shields.io/badge/Version-1.0.6-informational?style=flat-square) ![AppVersion: 2.0.1](https://img.shields.io/badge/AppVersion-2.0.1-informational?style=flat-square)
 
 A Helm chart for Kubernetes
 
@@ -11,6 +11,11 @@ A Helm chart for Kubernetes
 | DEV_PHASE.dev | bool | `false` | Set the DEV_PHASE.dev True, if Appstore/Tycho running locally. Else, set it to False |
 | airflow.authenticate | bool | `true` |  |
 | artifactCache | object | `{"authenticate":false,"enabled":false,"port":8080,"serviceName":"artifact-cache"}` | Optional /artifact route to an in-cluster artifact-cache service (replaces the ambassador Mapping for /artifact). Enable in envs that serve the helx-apps registry/specs from an artifact cache (e.g. air-gapped OpenShift). Off by default. Set authenticate=true to require the auth_request gate on /artifact. |
+| authCache | object | `{"enabled":true,"negativeTtl":2,"sessionCookieName":"sessionid","size":"10m","ttl":30}` | Caches appstore's authorization + routing decision for /private requests in memory, keyed by session cookie and app/user/guid, so loading an app costs one appstore call per ttl instead of one per request. |
+| authCache.negativeTtl | int | `2` | Seconds a failed decision (403/404/5xx) is reused, so a burst of requests behind a failing check doesn't each re-ask appstore. 0 disables. |
+| authCache.sessionCookieName | string | `"sessionid"` | appstore's Django session cookie (SESSION_COOKIE_NAME). |
+| authCache.size | string | `"10m"` | Shared memory for cached decisions; least-recently-used entries are evicted when full. |
+| authCache.ttl | int | `30` | Seconds a successful decision is reused. Bounds how long access outlives a logout or an app shutdown. Keep it well below appstore's DJANGO_SESSION_IDLE_TIMEOUT (default 300): only cache misses reach appstore and refresh a session's idle timer. |
 | basicAuth | object | `{"enabled":false,"password":"defaultPassword","username":"defaultUser"}` | Creates a basicAuth scheme preventing un-authenticated access to the whole site. |
 | basicAuth.password | string | `"defaultPassword"` | Password, make sure to override. |
 | basicAuth.username | string | `"defaultUser"` | Username , make sure to override. |
@@ -38,7 +43,7 @@ A Helm chart for Kubernetes
 | ingress.ingressClassName | string | `nil` | Set to use a specific ingress class other than the default. |
 | ingress.tls.enabled | bool | `true` | Values inserted into the TLS block come from SSL.nginxTLSSecret and service.serverName for backward compatibility |
 | nameOverride | string | `""` |  |
-| replicaCount | int | `1` |  |
+| replicaCount | int | `1` | Number of resty pods. Each pod keeps its own authCache. |
 | resources.limits.cpu | string | `"100m"` |  |
 | resources.limits.memory | string | `"128Mi"` |  |
 | resources.requests.cpu | string | `"50m"` |  |
