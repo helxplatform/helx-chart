@@ -2,6 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# -- Number of resty pods. Each pod keeps its own authCache.
 replicaCount: 1
 
 image:
@@ -83,6 +84,25 @@ external_http_host: false
 
 airflow:
   authenticate: true
+
+# -- Caches appstore's authorization + routing decision for /private requests
+# in memory, keyed by session cookie and app/user/guid, so loading an app costs
+# one appstore call per ttl instead of one per request.
+authCache:
+  enabled: true
+  # -- Seconds a successful decision is reused. Bounds how long access outlives
+  # a logout or an app shutdown. Keep it well below appstore's
+  # DJANGO_SESSION_IDLE_TIMEOUT (default 300): only cache misses reach appstore
+  # and refresh a session's idle timer.
+  ttl: 30
+  # -- Seconds a failed decision (403/404/5xx) is reused, so a burst of
+  # requests behind a failing check doesn't each re-ask appstore. 0 disables.
+  negativeTtl: 2
+  # -- Shared memory for cached decisions; least-recently-used entries are
+  # evicted when full.
+  size: 10m
+  # -- appstore's Django session cookie (SESSION_COOKIE_NAME).
+  sessionCookieName: sessionid
 
 workerConnections: 1024
 stubStatus:
