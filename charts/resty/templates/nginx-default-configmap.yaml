@@ -4,8 +4,6 @@ metadata:
   name: {{ .Release.Name }}-default-nginx-conf
 data:
   default.conf: |
-    proxy_cache_path /tmp/nginx_auth_cache levels=1:2 keys_zone=auth_cache:10m max_size=50m inactive=1m use_temp_path=off;
-
     #####################################################################
     # PROTOTYPE: Ambassador-free routing.
     #
@@ -26,6 +24,12 @@ data:
     # re-resolved at request time (that is what makes /private dynamic).
     # Override with resty.dnsResolver if your cluster DNS differs.
     resolver {{ .Values.dnsResolver | default "kube-dns.kube-system.svc.cluster.local" }} valid=10s ipv6=off;
+
+    {{- if .Values.authCache.enabled }}
+
+    lua_shared_dict private_route_cache {{ .Values.authCache.size }};
+    lua_shared_dict private_route_locks 1m;
+    {{- end }}
 
     {{- $appsNamespace := .Values.global.apps_namespace | default .Release.Namespace }}
     {{- $dnsSuffix := .Values.global.cluster_dns_suffix | default "svc.cluster.local" }}
@@ -109,9 +113,8 @@ data:
       # backend. appstore is authoritative: it verifies the user OWNS this
       # system (a check Ambassador never did -- it set bypass_auth: true) and
       # returns the backend Service host, its real port, and the per-app
-      # rewrite rule. We then proxy over cluster DNS. This subrequest fires
-      # at the same frequency Ambassador's auth_request already did, so it
-      # adds no round-trip versus the old flow.
+      # rewrite rule. We then proxy over cluster DNS. With authCache enabled,
+      # each decision is reused for authCache.ttl seconds per session + system.
       #####################################################
       location ~ ^/private/(?<app>[^/]+)/(?<user>[^/]+)/(?<guid>[^/]+)(?<rest>/.*)?$ {
         client_max_body_size 2000M;
@@ -126,26 +129,96 @@ data:
         # dev: appstore/tycho run locally, no in-cluster resolution.
         {{- else }}
         access_by_lua_block {
-          -- Ask appstore to authorize + resolve this /private URL. Cookies
-          -- are inherited by the subrequest; pass the original path along.
-          local res = ngx.location.capture(
-            "/appstore-resolve",
-            { args = { uri = ngx.var.request_uri } }
-          )
-          if res.status ~= 200 then
-            -- 403 (not owner), 404 (not ready), 5xx (resolve failed)
-            ngx.exit(res.status)
+          local function resolve()
+            -- Ask appstore to authorize + resolve this /private URL. Cookies
+            -- are inherited by the subrequest. Pass $uri, not $request_uri:
+            -- the backend Service is built from the location captures, which
+            -- come from the normalized $uri, so appstore must authorize that
+            -- same path. A raw "/../" path would otherwise be authorized as
+            -- one system and proxied to another.
+            local res = ngx.location.capture(
+              "/appstore-resolve",
+              { args = { uri = ngx.var.uri } }
+            )
+            if res.status ~= 200 then
+              -- 403 (not owner), 404 (not ready), 5xx (resolve failed)
+              return { status = res.status }
+            end
+            local h = res.header
+            if not h["X-Backend-Port"] then
+              ngx.log(ngx.ERR, "private resolve: missing backend port")
+              return { status = 502 }
+            end
+            return {
+              status       = 200,
+              port         = h["X-Backend-Port"],
+              rewrite      = h["X-Rewrite"] or "",
+              prefix       = h["X-Prefix"] or "",
+              remote_user  = h["REMOTE_USER"] or "",
+              access_token = h["ACCESS_TOKEN"] or "",
+            }
           end
 
-          local h = res.header
-          local port    = h["X-Backend-Port"]
-          local rewrite = h["X-Rewrite"] or ""
-          local prefix  = h["X-Prefix"] or ""
+          {{- if .Values.authCache.enabled }}
 
-          if not port then
-            ngx.log(ngx.ERR, "private resolve: missing backend port")
-            ngx.exit(502)
+          -- Django reads the last session cookie, nginx's $cookie_* the first.
+          -- Only cache when there is exactly one, so the cache key is the
+          -- session appstore actually authenticated.
+          local function session_id()
+            local cookies = ngx.var.http_cookie
+            if not cookies then return nil end
+            local sid
+            for pair in cookies:gmatch("[^;]+") do
+              local name, value = pair:match("^%s*(.-)%s*=%s*(.-)%s*$")
+              if name == {{ .Values.authCache.sessionCookieName | quote }} then
+                if sid then return nil end
+                sid = value
+              end
+            end
+            if sid ~= "" then return sid end
           end
+
+          local route
+          local sid = session_id()
+          if sid then
+            local cjson = require "cjson.safe"
+            local cache = ngx.shared.private_route_cache
+            local key = ngx.md5(sid) .. "/" .. ngx.var.app .. "/" .. ngx.var.user .. "/" .. ngx.var.guid
+            local function lookup()
+              local v = cache:get(key)
+              return v and cjson.decode(v)
+            end
+
+            route = lookup()
+            if not route then
+              -- Concurrent misses on one key share a single appstore call.
+              local lock = require("resty.lock"):new("private_route_locks", { timeout = 30, exptime = 35 })
+              local locked = lock and lock:lock(key)
+              route = lookup()
+              if not route then
+                route = resolve()
+                local ttl = route.status == 200 and {{ .Values.authCache.ttl | float64 }} or {{ .Values.authCache.negativeTtl | float64 }}
+                if ttl > 0 then
+                  cache:set(key, cjson.encode(route), ttl)
+                end
+              end
+              if locked then lock:unlock() end
+            end
+          else
+            route = resolve()
+          end
+          {{- else }}
+
+          local route = resolve()
+          {{- end }}
+
+          if route.status ~= 200 then
+            ngx.exit(route.status)
+          end
+
+          local port    = route.port
+          local rewrite = route.rewrite
+          local prefix  = route.prefix
 
           -- The backend Service name is deterministic from the URL path:
           -- {app}-{guid} (Tycho System.name = f"{app_id}-{identifier}").
@@ -185,8 +258,8 @@ data:
           end
 
           -- Inject identity downstream, as Ambassador's REMOTE_USER header did.
-          ngx.req.set_header("REMOTE_USER", h["REMOTE_USER"] or "")
-          ngx.req.set_header("Authorization", h["ACCESS_TOKEN"] or "")
+          ngx.req.set_header("REMOTE_USER", route.remote_user)
+          ngx.req.set_header("Authorization", route.access_token)
         }
         {{- end }}
 
@@ -252,13 +325,6 @@ data:
         proxy_pass_request_body off;
         proxy_set_header        Content-Length "";
         proxy_set_header        X-Original-URI $request_uri;
-
-        proxy_cache auth_cache;
-        proxy_cache_key "$cookie_sessionid";
-        proxy_cache_valid 200 302 30s;
-        proxy_ignore_headers Cache-Control Expires Set-Cookie;
-        proxy_cache_lock on;
-        proxy_cache_lock_timeout 5s;
       }
 
       # ---- appstore catch-all (was Ambassador Mapping: prefix /) ----
